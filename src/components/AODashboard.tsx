@@ -705,16 +705,10 @@ function AODashboard({
     endorsementLetter: File | null;
     letterToConduct: File | null;
     activityDesign: File | null;
-    budgetProposal: File | null;
-    minutesOfMeeting: File | null;
-    annualProposal: File | null;
   }>({
     endorsementLetter: null,
     letterToConduct: null,
     activityDesign: null,
-    budgetProposal: null,
-    minutesOfMeeting: null,
-    annualProposal: null,
   });
   const [activityErrors, setActivityErrors] = useState({
     title: false,
@@ -2672,7 +2666,7 @@ function AODashboard({
         budget: !activityBudget,
         sdg: activitySDG.length === 0,
         likha: !activityLIKHA,
-        files: !activityFiles.endorsementLetter || !activityFiles.letterToConduct || !activityFiles.activityDesign || !activityFiles.budgetProposal || !activityFiles.minutesOfMeeting || !activityFiles.annualProposal
+        files: !activityFiles.endorsementLetter || !activityFiles.letterToConduct || !activityFiles.activityDesign
       };
       
       setActivityErrors(errors);
@@ -2744,13 +2738,10 @@ function AODashboard({
         };
 
         // Step 2: Upload all required files with submission_id in path
-        const fileEntries: { key: 'endorsementLetter' | 'letterToConduct' | 'activityDesign' | 'budgetProposal' | 'minutesOfMeeting' | 'annualProposal'; label: string }[] = [
+        const fileEntries: { key: 'endorsementLetter' | 'letterToConduct' | 'activityDesign'; label: string }[] = [
           { key: 'endorsementLetter', label: 'Endorsement Letter' },
           { key: 'letterToConduct', label: 'Letter to Conduct' },
           { key: 'activityDesign', label: 'Activity Design' },
-          { key: 'budgetProposal', label: 'Budget Proposal' },
-          { key: 'minutesOfMeeting', label: 'Minutes of Meeting' },
-          { key: 'annualProposal', label: 'Annual Proposal' },
         ];
 
         const uploadResults = await Promise.all(
@@ -2835,9 +2826,6 @@ function AODashboard({
         endorsementLetter: null,
         letterToConduct: null,
         activityDesign: null,
-        budgetProposal: null,
-        minutesOfMeeting: null,
-        annualProposal: null,
       });
     };
 
@@ -3200,9 +3188,6 @@ function AODashboard({
                     { key: 'endorsementLetter' as const, label: 'Endorsement Letter' },
                     { key: 'letterToConduct' as const, label: 'Letter to Conduct' },
                     { key: 'activityDesign' as const, label: 'Activity Design' },
-                    { key: 'budgetProposal' as const, label: 'Budget Proposal' },
-                    { key: 'minutesOfMeeting' as const, label: 'Minutes of Meeting' },
-                    { key: 'annualProposal' as const, label: 'Annual Proposal' },
                   ]).map(({ key, label }) => (
                     <div
                       key={key}

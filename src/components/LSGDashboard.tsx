@@ -3693,7 +3693,7 @@ export default function LSGDashboard() {
       budget: !activityBudget,
       sdg: !activitySDG,
       likha: !activityLIKHA,
-      designFile: !activityDesignFile
+      designFile: !endorsementLetterFile || !letterToConductFile || !activityDesignFile
     };
     
     setActivityErrors(errors);
@@ -3734,7 +3734,8 @@ export default function LSGDashboard() {
       const submissionId = submissionData.id;
 
       // Helper to upload a file and get its public URL, scoped to submission_id
-      const uploadFile = async (file: File, folder: string) => {
+      const uploadFile = async (file: File, folder: string, label: string) => {
+        if (!file.name.toLowerCase().endsWith('.pdf')) throw new Error(`Only PDF files are allowed. "${file.name}" is not a PDF.`);
         const fileExt = file.name.split('.').pop();
         const fileName = `LSG_${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
         // Include submission_id in path for strict per-submission isolation
@@ -3746,36 +3747,22 @@ export default function LSGDashboard() {
         const { data: { publicUrl } } = supabase.storage
           .from('osld-files')
           .getPublicUrl(filePath);
-        return { url: publicUrl, name: file.name };
+        return { url: publicUrl, name: `${label}: ${file.name}` };
       };
 
-      // Upload the required Activity Design file
-      const designResult = await uploadFile(activityDesignFile!, 'activity-designs');
+      const endorsementResult = await uploadFile(endorsementLetterFile!, 'activity-designs', 'Endorsement Letter');
+      const letterToConductResult = await uploadFile(letterToConductFile!, 'activity-designs', 'Letter to Conduct');
+      const designResult = await uploadFile(activityDesignFile!, 'activity-designs', 'Activity Design');
 
-      // Upload optional files and capture results
-      const endorsementResult = endorsementLetterFile ? await uploadFile(endorsementLetterFile, 'activity-designs') : null;
-      const letterToConductResult = letterToConductFile ? await uploadFile(letterToConductFile, 'activity-designs') : null;
-
-      // Build file_name as a summary of all uploaded files
-      const uploadedFiles = [
-        activityDesignFile?.name && `Activity Design: ${activityDesignFile.name}`,
-        endorsementLetterFile?.name && `Endorsement Letter: ${endorsementLetterFile.name}`,
-        letterToConductFile?.name && `Letter to Conduct: ${letterToConductFile.name}`,
-      ].filter(Boolean).join(' | ');
-
-      // Build file_urls for all uploaded files
-      const allFileUrls = [
-        designResult.url,
-        endorsementResult?.url,
-        letterToConductResult?.url,
-      ].filter(Boolean).join(' | ');
+      const uploadedFiles = [endorsementResult.name, letterToConductResult.name, designResult.name].join(' | ');
+      const allFileUrls = [endorsementResult.url, letterToConductResult.url, designResult.url].join(' | ');
 
       // Update submission row with actual file URLs
       await supabase
         .from('submissions')
         .update({
-          file_url: designResult.url,
-          file_name: uploadedFiles || activityDesignFile!.name,
+          file_url: endorsementResult.url,
+          file_name: uploadedFiles,
           file_urls: allFileUrls,
         })
         .eq('id', submissionId);
@@ -4931,7 +4918,7 @@ export default function LSGDashboard() {
                            'Google Drive Folder Link'}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {selectedLog.type === 'Request to Conduct Activity' ? 'Contains: Endorsement Letter, Letter to Conduct, Activity Design, Budget Proposal, Minutes of Meeting, Annual Proposal' : 'View submitted file'}
+                          {selectedLog.type === 'Request to Conduct Activity' ? 'Contains: Endorsement Letter, Letter to Conduct, Activity Design' : 'View submitted file'}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -5676,15 +5663,20 @@ export default function LSGDashboard() {
                           {endorsementLetterFile ? (
                             <span className="text-xs text-[#003b27] text-center break-all line-clamp-2">{endorsementLetterFile.name}</span>
                           ) : (
-                            <span className="text-xs text-gray-400">Click to upload</span>
+                            <span className="text-xs text-gray-400">PDF file only</span>
                           )}
                         </div>
                         <input
                           type="file"
                           className="hidden"
-                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          accept=".pdf,application/pdf"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
+                            if (file && !file.name.toLowerCase().endsWith('.pdf')) {
+                              alert('Only PDF files are allowed.');
+                              e.target.value = '';
+                              return;
+                            }
                             if (file) setEndorsementLetterFile(file);
                           }}
                         />
@@ -5704,15 +5696,20 @@ export default function LSGDashboard() {
                           {letterToConductFile ? (
                             <span className="text-xs text-[#003b27] text-center break-all line-clamp-2">{letterToConductFile.name}</span>
                           ) : (
-                            <span className="text-xs text-gray-400">Click to upload</span>
+                            <span className="text-xs text-gray-400">PDF file only</span>
                           )}
                         </div>
                         <input
                           type="file"
                           className="hidden"
-                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          accept=".pdf,application/pdf"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
+                            if (file && !file.name.toLowerCase().endsWith('.pdf')) {
+                              alert('Only PDF files are allowed.');
+                              e.target.value = '';
+                              return;
+                            }
                             if (file) setLetterToConductFile(file);
                           }}
                         />
@@ -5732,15 +5729,20 @@ export default function LSGDashboard() {
                           {activityDesignFile ? (
                             <span className="text-xs text-[#003b27] text-center break-all line-clamp-2">{activityDesignFile.name}</span>
                           ) : (
-                            <span className="text-xs text-gray-400">Click to upload</span>
+                            <span className="text-xs text-gray-400">PDF file only</span>
                           )}
                         </div>
                         <input
                           type="file"
                           className="hidden"
-                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          accept=".pdf,application/pdf"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
+                            if (file && !file.name.toLowerCase().endsWith('.pdf')) {
+                              alert('Only PDF files are allowed.');
+                              e.target.value = '';
+                              return;
+                            }
                             if (file) setActivityDesignFile(file);
                           }}
                         />
@@ -5750,16 +5752,13 @@ export default function LSGDashboard() {
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-3">* Activity Design is required. Other documents are optional but recommended.</p>
+                  <p className="text-xs text-gray-500 mt-3">* All documents are required.</p>
                   <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
                     <p className="text-xs font-semibold text-green-800 mb-1">Required Documents:</p>
                     <ul className="list-disc pl-4 space-y-0.5 text-xs text-green-700">
                       <li>Endorsement Letter</li>
                       <li>Letter to Conduct</li>
                       <li>Activity Design</li>
-                      <li>Budget Proposal</li>
-                      <li>Minutes of Meeting</li>
-                      <li>Annual Proposal</li>
                     </ul>
                   </div>
                 </div>
