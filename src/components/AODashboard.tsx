@@ -154,11 +154,13 @@ function AODashboard({
   showDeadline = true,
   showAddButton = false 
 }: AODashboardProps) {
+  const navStorageKey = `${orgShortName.toLowerCase()}_activeNav`;
+  const submissionTabStorageKey = `${orgShortName.toLowerCase()}_activeSubmissionTab`;
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("Dashboard");
-  const [activeSubmissionTab, setActiveSubmissionTab] = useState("Request to Conduct Activity");
+  const [activeNav, setActiveNav] = useState(() => localStorage.getItem(navStorageKey) || "Dashboard");
+  const [activeSubmissionTab, setActiveSubmissionTab] = useState(() => localStorage.getItem(submissionTabStorageKey) || "Request to Conduct Activity");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showNotificationPopover, setShowNotificationPopover] = useState(false);
   const [notifications, setNotifications] = useState<Array<{ id: string; eventTitle: string; eventDescription: string; createdBy: string; createdAt: string; isRead: boolean }>>([]);
@@ -167,6 +169,14 @@ function AODashboard({
   const [isAuditFilesExpanded, setIsAuditFilesExpanded] = useState(false);
   const [selectedTemplateOrg, setSelectedTemplateOrg] = useState<string | null>(null);
   const [uploadedTemplates, setUploadedTemplates] = useState<Record<string, { fiscal?: { fileName: string; fileUrl: string } }>>({});
+
+  useEffect(() => {
+    localStorage.setItem(navStorageKey, activeNav);
+  }, [activeNav, navStorageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(submissionTabStorageKey, activeSubmissionTab);
+  }, [activeSubmissionTab, submissionTabStorageKey]);
   
   // Profile state
   const [showProfile, setShowProfile] = useState(false);
@@ -1531,6 +1541,13 @@ function AODashboard({
   };
 
   const handleLogout = () => {
+    const orgKey = orgShortName.toLowerCase();
+    localStorage.removeItem(`${orgKey}_userEmail`);
+    localStorage.removeItem(`${orgKey}_userPassword`);
+    localStorage.removeItem("userOrganization");
+    localStorage.removeItem("app_lastPath");
+    localStorage.removeItem(`${orgKey}_activeNav`);
+    localStorage.removeItem(`${orgKey}_activeSubmissionTab`);
     window.location.href = "/";
   };
 
@@ -2599,9 +2616,7 @@ function AODashboard({
               <Button
                 style={{ backgroundColor: "#003b27" }}
                 onClick={() => {
-                  localStorage.removeItem("userEmail");
-                  localStorage.removeItem("userPassword");
-                  window.location.href = "/";
+                  handleLogout();
                 }}
               >
                 Logout
@@ -3652,7 +3667,7 @@ function AODashboard({
               </Button>
               <Button
                 onClick={() => {
-                  window.location.href = "/";
+                  handleLogout();
                 }}
                 style={{ backgroundColor: "#003b27" }}
               >
@@ -3995,7 +4010,7 @@ function AODashboard({
               </Button>
               <Button
                 onClick={() => {
-                  window.location.href = "/";
+                  handleLogout();
                 }}
                 style={{ backgroundColor: "#003b27" }}
               >
@@ -5443,7 +5458,7 @@ function AODashboard({
                 style={{ backgroundColor: "#003b27" }}
                 onClick={() => {
                   setIsLogoutDialogOpen(false);
-                  window.location.href = "/";
+                  handleLogout();
                 }}
               >
                 Logout

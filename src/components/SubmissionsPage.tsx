@@ -249,6 +249,20 @@ export default function SubmissionsPage({
   };
 
   const handleLogout = () => {
+    const orgKey = orgShortName.toLowerCase();
+    if (orgKey === "osld") {
+      localStorage.removeItem("osld_userEmail");
+      localStorage.removeItem("osld_userPassword");
+      localStorage.removeItem("osld_activeNav");
+      localStorage.removeItem("osld_activeSubmissionTab");
+    } else {
+      localStorage.removeItem(`${orgKey}_userEmail`);
+      localStorage.removeItem(`${orgKey}_userPassword`);
+      localStorage.removeItem(`${orgKey}_activeNav`);
+      localStorage.removeItem(`${orgKey}_activeSubmissionTab`);
+    }
+    localStorage.removeItem("userOrganization");
+    localStorage.removeItem("app_lastPath");
     window.location.href = "/";
   };
 

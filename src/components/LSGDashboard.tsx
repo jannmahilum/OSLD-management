@@ -555,10 +555,11 @@ const DeadlineAppealSection = ({ deadlineType, eventId, targetOrg, appealApprove
 
 export default function LSGDashboard() {
   const { toast } = useToast();
+  const navStorageKey = "lsg_activeNav";
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("Dashboard");
+  const [activeNav, setActiveNav] = useState(() => localStorage.getItem(navStorageKey) || "Dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showNotificationPopover, setShowNotificationPopover] = useState(false);
   const [notifications, setNotifications] = useState<Array<{ id: string; eventTitle: string; eventDescription: string; createdBy: string; createdAt: string; isRead: boolean }>>([]);
@@ -566,6 +567,10 @@ export default function LSGDashboard() {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [selectedTemplateOrg, setSelectedTemplateOrg] = useState<string | null>(null);
   const [uploadedTemplates, setUploadedTemplates] = useState<Record<string, { forms?: { fileName: string; fileUrl: string } }>>({});
+
+  useEffect(() => {
+    localStorage.setItem(navStorageKey, activeNav);
+  }, [activeNav]);
 
   // Profile state
   const [showProfile, setShowProfile] = useState(false);
@@ -2064,6 +2069,11 @@ export default function LSGDashboard() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem("lsg_userEmail");
+    localStorage.removeItem("lsg_userPassword");
+    localStorage.removeItem("userOrganization");
+    localStorage.removeItem("app_lastPath");
+    localStorage.removeItem("lsg_activeNav");
     window.location.href = "/";
   };
 
@@ -3102,9 +3112,7 @@ export default function LSGDashboard() {
               <Button
                 style={{ backgroundColor: "#003b27" }}
                 onClick={() => {
-                  localStorage.removeItem("userEmail");
-                  localStorage.removeItem("userPassword");
-                  window.location.href = "/";
+                  handleLogout();
                 }}
               >
                 Logout
@@ -3330,9 +3338,7 @@ export default function LSGDashboard() {
               <Button
                 style={{ backgroundColor: "#003b27" }}
                 onClick={() => {
-                  localStorage.removeItem("userEmail");
-                  localStorage.removeItem("userPassword");
-                  window.location.href = "/";
+                  handleLogout();
                 }}
               >
                 Logout
@@ -3506,9 +3512,7 @@ export default function LSGDashboard() {
               <Button
                 style={{ backgroundColor: "#003b27" }}
                 onClick={() => {
-                  localStorage.removeItem("userEmail");
-                  localStorage.removeItem("userPassword");
-                  window.location.href = "/";
+                  handleLogout();
                 }}
               >
                 Logout

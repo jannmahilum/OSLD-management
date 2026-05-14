@@ -355,12 +355,14 @@ interface OrgAccount {
 }
 
 export default function OSLDDashboard() {
+  const navStorageKey = "osld_activeNav";
+  const submissionTabStorageKey = "osld_activeSubmissionTab";
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("Dashboard");
+  const [activeNav, setActiveNav] = useState(() => localStorage.getItem(navStorageKey) || "Dashboard");
   const [activeView, setActiveView] = useState<"TODAY" | "EVENT">("TODAY");
   const [calendarViewMode, setCalendarViewMode] = useState<"calendar" | "list">("calendar");
   const [calendarFilterOrg, setCalendarFilterOrg] = useState<string>("ALL");
@@ -379,7 +381,15 @@ export default function OSLDDashboard() {
   const [isUploading, setIsUploading] = useState(false);
   const [templateLinks, setTemplateLinks] = useState<Record<string, { forms?: string }>>({});
   const [isInboxModalOpen, setIsInboxModalOpen] = useState(false);
-  const [activeSubmissionTab, setActiveSubmissionTab] = useState<string>("Request to Conduct Activity");
+  const [activeSubmissionTab, setActiveSubmissionTab] = useState<string>(() => localStorage.getItem(submissionTabStorageKey) || "Request to Conduct Activity");
+
+  useEffect(() => {
+    localStorage.setItem(navStorageKey, activeNav);
+  }, [activeNav]);
+
+  useEffect(() => {
+    localStorage.setItem(submissionTabStorageKey, activeSubmissionTab);
+  }, [activeSubmissionTab]);
   
   // All Submissions search and filter states
   const [allSubmissionsSearch, setAllSubmissionsSearch] = useState("");
@@ -2339,7 +2349,12 @@ ${deadlineInfo}`;
   };
 
   const handleLogout = () => {
-    // Clear any session data if needed
+    localStorage.removeItem("osld_userEmail");
+    localStorage.removeItem("osld_userPassword");
+    localStorage.removeItem("userOrganization");
+    localStorage.removeItem("app_lastPath");
+    localStorage.removeItem("osld_activeNav");
+    localStorage.removeItem("osld_activeSubmissionTab");
     window.location.href = "/";
   };
 
