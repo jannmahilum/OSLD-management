@@ -1,0 +1,2 @@
+ALTER TABLE osld_events ADD COLUMN IF NOT EXISTS start_time TEXT;
+ALTER TABLE osld_events ADD COLUMN IF NOT EXISTS end_time TEXT;

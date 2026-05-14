@@ -1,0 +1,1 @@
+ALTER TABLE public.submissions DISABLE ROW LEVEL SECURITY;

@@ -1,0 +1,1 @@
+ALTER TABLE form_templates DROP CONSTRAINT IF EXISTS form_templates_organization_template_type_key;

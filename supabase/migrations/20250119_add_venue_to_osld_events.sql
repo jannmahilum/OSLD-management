@@ -1,0 +1,1 @@
+ALTER TABLE osld_events ADD COLUMN IF NOT EXISTS venue TEXT;

@@ -1,0 +1,1 @@
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS file_revision_status JSONB DEFAULT NULL;

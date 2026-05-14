@@ -1,0 +1,1 @@
+ALTER TABLE osld_events ADD COLUMN IF NOT EXISTS created_by TEXT DEFAULT 'OSLD';

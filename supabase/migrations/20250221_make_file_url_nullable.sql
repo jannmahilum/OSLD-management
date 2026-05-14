@@ -1,0 +1,2 @@
+ALTER TABLE submissions ALTER COLUMN file_url DROP NOT NULL;
+ALTER TABLE submissions ALTER COLUMN file_name DROP NOT NULL;
