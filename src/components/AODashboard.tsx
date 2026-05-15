@@ -154,11 +154,13 @@ function AODashboard({
   showDeadline = true,
   showAddButton = false 
 }: AODashboardProps) {
+  const navStorageKey = `${orgShortName.toLowerCase()}_activeNav`;
+  const submissionTabStorageKey = `${orgShortName.toLowerCase()}_activeSubmissionTab`;
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("Dashboard");
-  const [activeSubmissionTab, setActiveSubmissionTab] = useState("Request to Conduct Activity");
+  const [activeNav, setActiveNav] = useState(() => localStorage.getItem(navStorageKey) || "Dashboard");
+  const [activeSubmissionTab, setActiveSubmissionTab] = useState(() => localStorage.getItem(submissionTabStorageKey) || "Request to Conduct Activity");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showNotificationPopover, setShowNotificationPopover] = useState(false);
   const [notifications, setNotifications] = useState<Array<{ id: string; eventTitle: string; eventDescription: string; createdBy: string; createdAt: string; isRead: boolean }>>([]);
@@ -167,6 +169,14 @@ function AODashboard({
   const [isAuditFilesExpanded, setIsAuditFilesExpanded] = useState(false);
   const [selectedTemplateOrg, setSelectedTemplateOrg] = useState<string | null>(null);
   const [uploadedTemplates, setUploadedTemplates] = useState<Record<string, { fiscal?: { fileName: string; fileUrl: string } }>>({});
+
+  useEffect(() => {
+    localStorage.setItem(navStorageKey, activeNav);
+  }, [activeNav, navStorageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(submissionTabStorageKey, activeSubmissionTab);
+  }, [activeSubmissionTab, submissionTabStorageKey]);
   
   // Profile state
   const [showProfile, setShowProfile] = useState(false);
@@ -705,16 +715,10 @@ function AODashboard({
     endorsementLetter: File | null;
     letterToConduct: File | null;
     activityDesign: File | null;
-    budgetProposal: File | null;
-    minutesOfMeeting: File | null;
-    annualProposal: File | null;
   }>({
     endorsementLetter: null,
     letterToConduct: null,
     activityDesign: null,
-    budgetProposal: null,
-    minutesOfMeeting: null,
-    annualProposal: null,
   });
   const [activityErrors, setActivityErrors] = useState({
     title: false,
@@ -1537,6 +1541,13 @@ function AODashboard({
   };
 
   const handleLogout = () => {
+    const orgKey = orgShortName.toLowerCase();
+    localStorage.removeItem(`${orgKey}_userEmail`);
+    localStorage.removeItem(`${orgKey}_userPassword`);
+    localStorage.removeItem("userOrganization");
+    localStorage.removeItem("app_lastPath");
+    localStorage.removeItem(`${orgKey}_activeNav`);
+    localStorage.removeItem(`${orgKey}_activeSubmissionTab`);
     window.location.href = "/";
   };
 
@@ -2605,9 +2616,7 @@ function AODashboard({
               <Button
                 style={{ backgroundColor: "#003b27" }}
                 onClick={() => {
-                  localStorage.removeItem("userEmail");
-                  localStorage.removeItem("userPassword");
-                  window.location.href = "/";
+                  handleLogout();
                 }}
               >
                 Logout
@@ -2672,7 +2681,7 @@ function AODashboard({
         budget: !activityBudget,
         sdg: activitySDG.length === 0,
         likha: !activityLIKHA,
-        files: !activityFiles.endorsementLetter || !activityFiles.letterToConduct || !activityFiles.activityDesign || !activityFiles.budgetProposal || !activityFiles.minutesOfMeeting || !activityFiles.annualProposal
+        files: !activityFiles.endorsementLetter || !activityFiles.letterToConduct || !activityFiles.activityDesign
       };
       
       setActivityErrors(errors);
@@ -2744,13 +2753,10 @@ function AODashboard({
         };
 
         // Step 2: Upload all required files with submission_id in path
-        const fileEntries: { key: 'endorsementLetter' | 'letterToConduct' | 'activityDesign' | 'budgetProposal' | 'minutesOfMeeting' | 'annualProposal'; label: string }[] = [
+        const fileEntries: { key: 'endorsementLetter' | 'letterToConduct' | 'activityDesign'; label: string }[] = [
           { key: 'endorsementLetter', label: 'Endorsement Letter' },
           { key: 'letterToConduct', label: 'Letter to Conduct' },
           { key: 'activityDesign', label: 'Activity Design' },
-          { key: 'budgetProposal', label: 'Budget Proposal' },
-          { key: 'minutesOfMeeting', label: 'Minutes of Meeting' },
-          { key: 'annualProposal', label: 'Annual Proposal' },
         ];
 
         const uploadResults = await Promise.all(
@@ -2835,9 +2841,6 @@ function AODashboard({
         endorsementLetter: null,
         letterToConduct: null,
         activityDesign: null,
-        budgetProposal: null,
-        minutesOfMeeting: null,
-        annualProposal: null,
       });
     };
 
@@ -3200,9 +3203,6 @@ function AODashboard({
                     { key: 'endorsementLetter' as const, label: 'Endorsement Letter' },
                     { key: 'letterToConduct' as const, label: 'Letter to Conduct' },
                     { key: 'activityDesign' as const, label: 'Activity Design' },
-                    { key: 'budgetProposal' as const, label: 'Budget Proposal' },
-                    { key: 'minutesOfMeeting' as const, label: 'Minutes of Meeting' },
-                    { key: 'annualProposal' as const, label: 'Annual Proposal' },
                   ]).map(({ key, label }) => (
                     <div
                       key={key}
@@ -3667,7 +3667,7 @@ function AODashboard({
               </Button>
               <Button
                 onClick={() => {
-                  window.location.href = "/";
+                  handleLogout();
                 }}
                 style={{ backgroundColor: "#003b27" }}
               >
@@ -4010,7 +4010,7 @@ function AODashboard({
               </Button>
               <Button
                 onClick={() => {
-                  window.location.href = "/";
+                  handleLogout();
                 }}
                 style={{ backgroundColor: "#003b27" }}
               >
@@ -5458,7 +5458,7 @@ function AODashboard({
                 style={{ backgroundColor: "#003b27" }}
                 onClick={() => {
                   setIsLogoutDialogOpen(false);
-                  window.location.href = "/";
+                  handleLogout();
                 }}
               >
                 Logout

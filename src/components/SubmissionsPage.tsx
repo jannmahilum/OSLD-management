@@ -116,9 +116,6 @@ export default function SubmissionsPage({
     endorsementLetter: false,
     letterToConduct: false,
     activityDesign: false,
-    budgetProposal: false,
-    minutesOfMeeting: false,
-    annualProposal: false,
     // For Accomplishment Report
     narrativeReport: false,
     documentation: false,
@@ -252,6 +249,20 @@ export default function SubmissionsPage({
   };
 
   const handleLogout = () => {
+    const orgKey = orgShortName.toLowerCase();
+    if (orgKey === "osld") {
+      localStorage.removeItem("osld_userEmail");
+      localStorage.removeItem("osld_userPassword");
+      localStorage.removeItem("osld_activeNav");
+      localStorage.removeItem("osld_activeSubmissionTab");
+    } else {
+      localStorage.removeItem(`${orgKey}_userEmail`);
+      localStorage.removeItem(`${orgKey}_userPassword`);
+      localStorage.removeItem(`${orgKey}_activeNav`);
+      localStorage.removeItem(`${orgKey}_activeSubmissionTab`);
+    }
+    localStorage.removeItem("userOrganization");
+    localStorage.removeItem("app_lastPath");
     window.location.href = "/";
   };
 
@@ -968,9 +979,6 @@ export default function SubmissionsPage({
     if (revisionItems.endorsementLetter) selectedItems.push("Endorsement Letter");
     if (revisionItems.letterToConduct) selectedItems.push("Letter to Conduct");
     if (revisionItems.activityDesign) selectedItems.push("Activity Design");
-    if (revisionItems.budgetProposal) selectedItems.push("Budget Proposal");
-    if (revisionItems.minutesOfMeeting) selectedItems.push("Minutes of Meeting");
-    if (revisionItems.annualProposal) selectedItems.push("Annual Proposal");
     
     // Accomplishment Report items
     if (revisionItems.narrativeReport) selectedItems.push("Narrative Report");
@@ -1057,9 +1065,6 @@ export default function SubmissionsPage({
       endorsementLetter: false,
       letterToConduct: false,
       activityDesign: false,
-      budgetProposal: false,
-      minutesOfMeeting: false,
-      annualProposal: false,
       narrativeReport: false,
       documentation: false,
       attendance: false,
@@ -1590,9 +1595,6 @@ export default function SubmissionsPage({
                   { key: 'endorsementLetter' as const, label: 'Endorsement Letter' },
                   { key: 'letterToConduct' as const, label: 'Letter to Conduct' },
                   { key: 'activityDesign' as const, label: 'Activity Design' },
-                  { key: 'budgetProposal' as const, label: 'Budget Proposal' },
-                  { key: 'minutesOfMeeting' as const, label: 'Minutes of Meeting' },
-                  { key: 'annualProposal' as const, label: 'Annual Proposal' },
                 ] as { key: keyof typeof revisionItems; label: string }[]).map(({ key, label }) => (
                   <div
                     key={key}

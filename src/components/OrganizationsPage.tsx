@@ -122,6 +122,12 @@ export default function OrganizationsPage({
   }>({});
 
   const handleLogout = () => {
+    localStorage.removeItem("osld_userEmail");
+    localStorage.removeItem("osld_userPassword");
+    localStorage.removeItem("userOrganization");
+    localStorage.removeItem("app_lastPath");
+    localStorage.removeItem("osld_activeNav");
+    localStorage.removeItem("osld_activeSubmissionTab");
     window.location.href = "/";
   };
 
