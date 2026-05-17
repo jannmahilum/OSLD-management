@@ -582,10 +582,10 @@ export default function LoginPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="space-y-1">
                     <CardTitle className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                      Sign In
+                      WELCOME
                     </CardTitle>
                     <CardDescription className="text-slate-700 dark:text-slate-300">
-                      Continue to your organization dashboard.
+                      Sign in to continue to your organization dashboard.
                     </CardDescription>
                   </div>
                 </div>
@@ -710,16 +710,10 @@ export default function LoginPage() {
                   >
                     {isLoading ? "Signing in..." : "Sign In"}
                   </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-12 w-full border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                    onClick={() => window.open("mailto:osld@carsu.edu.ph")}
-                  >
-                    Contact Support
-                  </Button>
                 </form>
+                <div className="mt-4 text-center text-sm text-slate-600 dark:text-slate-300">
+                  Forgot your Password? Please contact OSLD
+                </div>
 
                 <div className="mt-6 flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
                   <div>© 2026 OSLD Management System</div>
