@@ -5150,14 +5150,17 @@ function AODashboard({
                 {(() => {
                   // Helper: render file list for a sub-submission with For Revision split view
                   const renderSubFiles = (subData: any, fileType: string, emoji: string, onDelete: () => void) => {
-                    const fileUrl = subData?.fileUrl || subData?.file_url;
-                    if (!fileUrl) return null;
-                    const fileNames = (subData.fileName || subData.file_name || '').split(' | ').filter(Boolean);
-                    const fileUrls = (subData.file_urls || fileUrl || '').split(' | ').filter(Boolean);
-                    const files = fileNames.map((name: string, i: number) => ({
-                      name,
-                      url: fileUrls[i] || fileUrls[0] || fileUrl,
-                    }));
+                    const splitParts = (value?: string | null) =>
+                      (value || '')
+                        .split('|')
+                        .map(p => p.trim())
+                        .filter(Boolean);
+
+                    const fileNames = splitParts(subData?.fileName || subData?.file_name);
+                    const fileUrls = splitParts(subData?.file_urls || subData?.fileUrl || subData?.file_url);
+                    const count = Math.min(fileNames.length, fileUrls.length);
+                    const files = Array.from({ length: count }, (_, i) => ({ name: fileNames[i], url: fileUrls[i] }));
+                    if (files.length === 0) return null;
 
                     const isForRevision = subData.status === 'For Revision';
                     const frs: Record<string, string> = subData.file_revision_status || {};
