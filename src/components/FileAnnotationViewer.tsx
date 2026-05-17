@@ -461,6 +461,7 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
       if (cancelled) return;
 
       if (error) {
+        console.log(error);
         setIsLoadingAnnotations(false);
         setAnnotationsError(error.message || "Failed to fetch annotations.");
         return;

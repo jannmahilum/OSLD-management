@@ -278,11 +278,12 @@ export default function SubmissionsPage({
 
     // Always re-fetch fresh submission data from DB to get latest file_revision_status
     // Filter strictly by submission id — never by submission_type alone
-    const { data: freshData } = await supabase
+    const { data: freshData, error: freshError } = await supabase
       .from('submissions')
       .select('*')
       .eq('id', submission.id)
-      .single();
+      .maybeSingle();
+    if (freshError) console.log(freshError);
     
     if (freshData) {
       submission = { ...submission, ...freshData };
@@ -290,11 +291,12 @@ export default function SubmissionsPage({
 
     // For Letter of Appeal, fetch the activity due title from osld_events
     if (submission.submission_type === 'Letter of Appeal' && submission.event_id) {
-      const { data: eventData } = await supabase
+      const { data: eventData, error: eventError } = await supabase
         .from('osld_events')
         .select('title')
         .eq('id', submission.event_id)
-        .single();
+        .maybeSingle();
+      if (eventError) console.log(eventError);
       
       if (eventData) {
         submission.activity_due_title = eventData.title;
