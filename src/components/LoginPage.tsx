@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format } from "date-fns";
 import { motion } from "framer-motion";
 import {
-  Bell,
   Building2,
-  Clock,
   Download,
   Eye,
   EyeOff,
@@ -16,7 +13,6 @@ import {
   Mail,
   Moon,
   PanelRight,
-  Pin,
   Sun,
   UserCog,
   Users,
@@ -48,12 +44,6 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "./ui/drawer";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./ui/tooltip";
 import { supabase } from "../lib/supabase";
 
 const loginSchema = z.object({
@@ -103,50 +93,27 @@ const portalOrganizations = [
   { acronym: "TGP", name: "The Gold Panicles", icon: Users },
 ];
 
-const sampleAnnouncements = [
-  {
-    title: "Submission of RLTC due on May 15",
-    tag: "Deadline",
-    pinned: true,
-    dateTime: "May 15 · 5:00 PM",
-  },
-  {
-    title: "Updated liquidation guidelines released",
-    tag: "Memo",
-    pinned: false,
-    dateTime: "May 12 · 9:30 AM",
-  },
-  {
-    title: "USG leadership orientation this Friday",
-    tag: "Event",
-    pinned: false,
-    dateTime: "May 10 · 2:00 PM",
-  },
-];
-
-const sampleMemos = [
-  {
-    title: "Revised Liquidation Requirements for Student Organizations",
-    memoNo: "OSLD-MEMO-2026-014",
-    dateIssued: "May 12, 2026",
-  },
-  {
-    title: "Guidelines on Financial Monitoring and Submission Deadlines",
-    memoNo: "OSLD-MEMO-2026-011",
-    dateIssued: "May 06, 2026",
-  },
-  {
-    title: "Compliance Checklist Updates for Accredited Organizations",
-    memoNo: "OSLD-MEMO-2026-008",
-    dateIssued: "Apr 28, 2026",
-  },
-];
+type OrgDocument = {
+  id: string;
+  document_type: string;
+  file_name: string;
+  file_url: string;
+  uploaded_at: string;
+};
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [now, setNow] = useState(() => new Date());
+  const [portalDocs, setPortalDocs] = useState<{
+    announcements: OrgDocument[];
+    memorandums: OrgDocument[];
+    functionalCharts: OrgDocument[];
+  }>({
+    announcements: [],
+    memorandums: [],
+    functionalCharts: [],
+  });
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
     const stored = localStorage.getItem("osld_theme");
@@ -175,16 +142,35 @@ export default function LoginPage() {
 
   const selectedOrg = watch("organization");
 
-  const greeting = useMemo(() => {
-    const hour = now.getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  }, [now]);
-
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(id);
+    const loadPortalDocuments = async () => {
+      const { data, error } = await supabase
+        .from("org_documents")
+        .select("id, document_type, file_name, file_url, uploaded_at")
+        .eq("organization", "osld")
+        .order("uploaded_at", { ascending: false });
+
+      if (error || !data) {
+        setPortalDocs({
+          announcements: [],
+          memorandums: [],
+          functionalCharts: [],
+        });
+        return;
+      }
+
+      const announcements = data.filter(
+        (d) => d.document_type === "announcement",
+      );
+      const memorandums = data.filter((d) => d.document_type === "memorandum");
+      const functionalCharts = data.filter(
+        (d) => d.document_type === "functional_chart",
+      );
+
+      setPortalDocs({ announcements, memorandums, functionalCharts });
+    };
+
+    loadPortalDocuments();
   }, []);
 
   useEffect(() => {
@@ -321,65 +307,13 @@ export default function LoginPage() {
                 tracking, financial monitoring, and organizational coordination
                 across Caraga State University.
               </CardDescription>
-            </div>
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="rounded-full border border-white/30 bg-white/40 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200 dark:border-white/10">
-                {format(now, "EEE, MMM d")}
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/40 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200 dark:border-white/10">
-                <Clock className="h-3.5 w-3.5" />
-                {format(now, "h:mm:ss a")}
+              <div className="text-sm italic text-slate-700 dark:text-slate-300">
+                “Leadership is not about control, but about transparency,
+                accountability, and service.”
               </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
-            <div className="relative overflow-hidden rounded-xl border border-white/20 bg-gradient-to-br from-[#014421]/10 via-white/40 to-[#D4AF37]/10 p-4 dark:border-white/10 dark:from-[#014421]/20 dark:via-slate-950/30 dark:to-[#D4AF37]/15">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                Portal Snapshot
-              </div>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10">
-                  <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                    Active Organizations
-                  </div>
-                  <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-50">
-                    9
-                  </div>
-                </div>
-                <div className="rounded-lg border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10">
-                  <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                    Pending Items
-                  </div>
-                  <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-50">
-                    3
-                  </div>
-                </div>
-              </div>
-              <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#D4AF37]/15 blur-2xl dark:bg-[#D4AF37]/10" />
-              <div className="pointer-events-none absolute -bottom-24 -left-24 h-52 w-52 rounded-full bg-[#014421]/15 blur-2xl dark:bg-[#014421]/20" />
-            </div>
-
-            <div className="rounded-xl border border-white/20 bg-white/50 p-4 shadow-sm dark:bg-white/5 dark:border-white/10">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
-                Guiding Principle
-              </div>
-              <div className="mt-2 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
-                “Leadership is not about control, but about transparency,
-                accountability, and service.”
-              </div>
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Institutional Governance
-                </div>
-                <div className="rounded-full bg-[#014421]/10 px-2.5 py-1 text-xs font-semibold text-[#014421] dark:bg-[#014421]/20 dark:text-[#D4AF37]">
-                  Verified
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
       </Card>
 
       <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
@@ -433,42 +367,43 @@ export default function LoginPage() {
                   Important updates and deadlines.
                 </CardDescription>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/40 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200 dark:border-white/10">
-                <Bell className="h-3.5 w-3.5" />
-                3
-              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="max-h-56 space-y-2 overflow-auto pr-1">
-              {sampleAnnouncements.map((a) => (
-                <div
-                  key={a.title}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      {a.pinned && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#D4AF37]/20 px-2 py-0.5 text-[11px] font-semibold text-[#6b4d00] dark:text-[#D4AF37] dark:bg-[#D4AF37]/10">
-                          <Pin className="h-3 w-3" />
-                          Pinned
-                        </span>
-                      )}
-                      <span className="inline-flex items-center rounded-full bg-slate-900/5 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">
-                        {a.tag}
-                      </span>
+            {portalDocs.announcements.length === 0 ? (
+              <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
+                OSLD hasn't uploaded announcements yet.
+              </div>
+            ) : (
+              <div className="max-h-56 space-y-2 overflow-auto pr-1">
+                {portalDocs.announcements.map((a) => (
+                  <div
+                    key={a.id}
+                    className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                        <span className="truncate">{a.file_name}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                        {new Date(a.uploaded_at).toLocaleString()}
+                      </div>
                     </div>
-                    <div className="mt-2 truncate text-sm font-medium text-slate-900 dark:text-slate-50">
-                      {a.title}
-                    </div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {a.dateTime}
-                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                      onClick={() => window.open(a.file_url, "_blank")}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
                   </div>
-                  <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#014421]/70 dark:bg-[#D4AF37]/70" />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -482,32 +417,38 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {sampleMemos.map((m) => (
-              <div
-                key={m.memoNo}
-                className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                    <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                    <span className="truncate">{m.title}</span>
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
-                    <span className="font-medium">{m.memoNo}</span>
-                    <span>{m.dateIssued}</span>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  View
-                </Button>
+            {portalDocs.memorandums.length === 0 ? (
+              <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
+                OSLD hasn't uploaded memorandums yet.
               </div>
-            ))}
+            ) : (
+              portalDocs.memorandums.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                      <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                      <span className="truncate">{m.file_name}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                      {new Date(m.uploaded_at).toLocaleString()}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                    onClick={() => window.open(m.file_url, "_blank")}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    View
+                  </Button>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
@@ -522,51 +463,40 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TooltipProvider>
-            <div className="grid gap-3 sm:grid-cols-9 sm:items-center">
-              {[
-                {
-                  key: "AO",
-                  desc: "Submissions and compliance from recognized organizations.",
-                },
-                { key: "LCO", desc: "Coordination and campus-level consolidation." },
-                { key: "USG", desc: "Student government endorsement and routing." },
-                { key: "OSLD", desc: "Institutional evaluation and final approval." },
-                { key: "COA", desc: "Audit validation and financial oversight." },
-              ].map((n, idx, arr) => (
+          {portalDocs.functionalCharts.length === 0 ? (
+            <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
+              OSLD hasn't uploaded the functional flow yet.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {portalDocs.functionalCharts.map((f) => (
                 <div
-                  key={n.key}
-                  className="contents"
+                  key={f.id}
+                  className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
                 >
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="rounded-xl border border-white/20 bg-white/60 px-4 py-3 text-center text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-white/70 dark:bg-white/5 dark:border-white/10 dark:text-slate-50 dark:hover:bg-white/10">
-                        {n.key}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[260px] bg-slate-900 text-slate-50">
-                      {n.desc}
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {idx < arr.length - 1 && (
-                    <motion.div
-                      aria-hidden
-                      className="hidden sm:flex items-center justify-center"
-                      initial={{ opacity: 0.6 }}
-                      animate={{ opacity: [0.45, 0.95, 0.45] }}
-                      transition={{ duration: 2.2, repeat: Infinity }}
-                    >
-                      <div className="h-px w-full bg-gradient-to-r from-[#014421]/30 via-[#D4AF37]/60 to-[#014421]/30 dark:from-[#D4AF37]/30 dark:via-white/25 dark:to-[#D4AF37]/30" />
-                    </motion.div>
-                  )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                      <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                      <span className="truncate">{f.file_name}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                      {new Date(f.uploaded_at).toLocaleString()}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                    onClick={() => window.open(f.file_url, "_blank")}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    View
+                  </Button>
                 </div>
               ))}
             </div>
-            <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-              Hover each node for role details.
-            </div>
-          </TooltipProvider>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -620,11 +550,6 @@ export default function LoginPage() {
               )}
             </Button>
 
-            <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/40 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200 dark:border-white/10">
-              <Clock className="h-3.5 w-3.5" />
-              {format(now, "h:mm a")}
-            </div>
-
             <Drawer>
               <DrawerTrigger asChild>
                 <Button
@@ -657,15 +582,11 @@ export default function LoginPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="space-y-1">
                     <CardTitle className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                      Sign In
+                      WELCOME
                     </CardTitle>
                     <CardDescription className="text-slate-700 dark:text-slate-300">
-                      {greeting}. Continue to your organization dashboard.
+                      Sign in to continue to your organization dashboard.
                     </CardDescription>
-                  </div>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#014421]/10 px-3 py-1 text-xs font-semibold text-[#014421] dark:bg-[#014421]/20 dark:text-[#D4AF37]">
-                    <Bell className="h-3.5 w-3.5" />
-                    3
                   </div>
                 </div>
               </CardHeader>
@@ -771,7 +692,7 @@ export default function LoginPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                       <input
                         type="checkbox"
@@ -780,12 +701,6 @@ export default function LoginPage() {
                       />
                       Remember me
                     </label>
-                    <a
-                      href="#"
-                      className="text-sm font-medium text-[#014421] hover:underline dark:text-[#D4AF37]"
-                    >
-                      Forgot Password
-                    </a>
                   </div>
 
                   <Button
@@ -795,16 +710,10 @@ export default function LoginPage() {
                   >
                     {isLoading ? "Signing in..." : "Sign In"}
                   </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-12 w-full border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                    onClick={() => window.open("mailto:osld@carsu.edu.ph")}
-                  >
-                    Contact Support
-                  </Button>
                 </form>
+                <div className="mt-4 text-center text-sm text-slate-600 dark:text-slate-300">
+                  Forgot your Password? Please contact OSLD
+                </div>
 
                 <div className="mt-6 flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
                   <div>© 2026 OSLD Management System</div>
@@ -821,10 +730,6 @@ export default function LoginPage() {
             <div className="mb-4 flex items-center justify-between">
               <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 Information Portal
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/40 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200 dark:border-white/10">
-                <Bell className="h-3.5 w-3.5" />
-                Notifications · 3
               </div>
             </div>
             {Portal}
