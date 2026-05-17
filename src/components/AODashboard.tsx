@@ -5295,7 +5295,7 @@ function AODashboard({
                                               size="sm"
                                               variant="outline"
                                               className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2"
-                                              onClick={() => { const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason }; setPreviewAnnotation(ann); setIsLogDetailOpen(false); setIsPreviewAnnotationOpen(true); }}
+                                              onClick={() => { const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason }; setPreviewAnnotation(ann); setIsLogDetailOpen(false); setTimeout(() => setIsPreviewAnnotationOpen(true), 0); }}
                                             >
                                               <Eye className="h-3 w-3 mr-1" />
                                               View Annotated
