@@ -4760,7 +4760,14 @@ export default function LSGDashboard() {
                                               size="sm"
                                               variant="outline"
                                               className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2"
-                                              onClick={() => { const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason }; setPreviewAnnotation(ann); setIsPreviewAnnotationOpen(true); }}
+                                              onClick={() => {
+                                                const activity = selectedLog;
+                                                console.log(activity);
+                                                console.log(activity?.annotated_file);
+                                                const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason };
+                                                setPreviewAnnotation(ann);
+                                                setIsPreviewAnnotationOpen(true);
+                                              }}
                                             >
                                               <Eye className="h-3 w-3 mr-1" />
                                               View Annotated
