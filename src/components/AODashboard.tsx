@@ -33,6 +33,7 @@ import {
   Clock,
   Search,
   Filter,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -185,6 +186,9 @@ function AODashboard({
   const [currentPassword, setCurrentPassword] = useState("");
   const [isEditAccountModalOpen, setIsEditAccountModalOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string>("");
+  const [isSubmittingActivity, setIsSubmittingActivity] = useState(false);
+  const [isSubmittingAccomplishment, setIsSubmittingAccomplishment] = useState(false);
+  const [isSubmittingLiquidation, setIsSubmittingLiquidation] = useState(false);
   
   // Accomplishment Report state
   const [accomplishmentActivityTitle, setAccomplishmentActivityTitle] = useState("");
@@ -274,6 +278,7 @@ function AODashboard({
       return;
     }
     
+    setIsSubmittingAccomplishment(true);
     try {
       // Determine target organization based on current org
       // NEW ROUTING: USED, LCO, USG, GSC, TGP → COA
@@ -383,6 +388,8 @@ function AODashboard({
 
       console.error('Error submitting accomplishment report:', error);
       alert(`Failed to submit accomplishment report: ${message}`);
+    } finally {
+      setIsSubmittingAccomplishment(false);
     }
   };
 
@@ -434,6 +441,7 @@ function AODashboard({
       return;
     }
     
+    setIsSubmittingLiquidation(true);
     try {
       // Determine target organization based on current org
       // LIQUIDATION ROUTING:
@@ -538,6 +546,8 @@ function AODashboard({
     } catch (error: unknown) {
       console.error('Error submitting liquidation report:', error);
       alert('Failed to submit liquidation report. Please try again.');
+    } finally {
+      setIsSubmittingLiquidation(false);
     }
   };
 
@@ -2690,6 +2700,7 @@ function AODashboard({
         return;
       }
       
+      setIsSubmittingActivity(true);
       try {
         // Determine target organization based on current org
         // LSG → USG, LCO/USG/GSC/USED/TGP → OSLD, AO (Accredited Orgs) → LCO
@@ -2823,6 +2834,8 @@ function AODashboard({
       } catch (error) {
         console.error('Error submitting activity:', error);
         alert('Failed to submit activity request. Please try again.');
+      } finally {
+        setIsSubmittingActivity(false);
       }
     };
 
@@ -2846,6 +2859,14 @@ function AODashboard({
 
     return (
       <div className="flex flex-col lg:flex-row h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        {isSubmittingActivity && (
+          <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/20">
+            <div className="bg-white rounded-lg shadow-xl px-5 py-4 flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#003b27" }} />
+              <p className="text-sm font-semibold text-gray-800">Submitting...</p>
+            </div>
+          </div>
+        )}
         {/* Mobile Menu Button */}
         <Button
           className="lg:hidden fixed top-4 left-4 z-50 rounded-full w-12 h-12 shadow-lg"
@@ -3273,16 +3294,21 @@ function AODashboard({
                 <Button
                   onClick={handleSubmitActivity}
                   className="flex-1 h-10 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
-                  style={{ backgroundColor: isOnHold || hasMissedDeadline ? "#9ca3af" : "#003b27" }}
-                  disabled={isOnHold || hasMissedDeadline}
+                  style={{ backgroundColor: isOnHold || hasMissedDeadline || isSubmittingActivity ? "#9ca3af" : "#003b27" }}
+                  disabled={isOnHold || hasMissedDeadline || isSubmittingActivity}
                 >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Submit Request
+                  {isSubmittingActivity ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
+                  {isSubmittingActivity ? "Submitting..." : "Submit Request"}
                 </Button>
                 <Button
                   onClick={handleCancelActivity}
                   className="flex-1 h-10 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
                   style={{ backgroundColor: "#ef4444" }}
+                  disabled={isSubmittingActivity}
                 >
                   <X className="h-4 w-4 mr-2" />
                   Cancel
@@ -3365,6 +3391,14 @@ function AODashboard({
   if (activeNav === "Accomplishment Report") {
     return (
       <div className="flex flex-col lg:flex-row h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        {isSubmittingAccomplishment && (
+          <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/20">
+            <div className="bg-white rounded-lg shadow-xl px-5 py-4 flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#003b27" }} />
+              <p className="text-sm font-semibold text-gray-800">Submitting...</p>
+            </div>
+          </div>
+        )}
         {/* Mobile Menu Button */}
         <Button
           className="lg:hidden fixed top-4 left-4 z-50 rounded-full w-12 h-12 shadow-lg"
@@ -3620,15 +3654,21 @@ function AODashboard({
                     <Button
                       onClick={() => handleAccomplishmentSubmit(currentEventIdForSubmission || undefined)}
                       className="flex-1 h-12 text-base font-semibold text-white shadow-lg hover:shadow-xl transition-all"
-                      style={{ backgroundColor: "#003b27" }}
+                      style={{ backgroundColor: isSubmittingAccomplishment ? "#9ca3af" : "#003b27" }}
+                      disabled={isSubmittingAccomplishment}
                     >
-                      <CheckCircle className="h-5 w-5 mr-2" />
-                      Submit Report
+                      {isSubmittingAccomplishment ? (
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle className="h-5 w-5 mr-2" />
+                      )}
+                      {isSubmittingAccomplishment ? "Submitting..." : "Submit Report"}
                     </Button>
                     <Button
                       onClick={handleAccomplishmentCancel}
                       className="flex-1 h-12 text-base font-semibold text-white shadow-lg hover:shadow-xl transition-all"
                       style={{ backgroundColor: "#ef4444" }}
+                      disabled={isSubmittingAccomplishment}
                     >
                       <X className="h-5 w-5 mr-2" />
                       Cancel
@@ -3708,6 +3748,14 @@ function AODashboard({
   if (activeNav === "Liquidation Report") {
     return (
       <div className="flex flex-col lg:flex-row h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        {isSubmittingLiquidation && (
+          <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/20">
+            <div className="bg-white rounded-lg shadow-xl px-5 py-4 flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#003b27" }} />
+              <p className="text-sm font-semibold text-gray-800">Submitting...</p>
+            </div>
+          </div>
+        )}
         {/* Mobile Menu Button */}
         <Button
           className="lg:hidden fixed top-4 left-4 z-50 rounded-full w-12 h-12 shadow-lg"
@@ -3963,15 +4011,21 @@ function AODashboard({
                     <Button
                       onClick={() => handleLiquidationSubmit(currentEventIdForSubmission || undefined)}
                       className="flex-1 h-12 text-base font-semibold text-white shadow-lg hover:shadow-xl transition-all"
-                      style={{ backgroundColor: "#003b27" }}
+                      style={{ backgroundColor: isSubmittingLiquidation ? "#9ca3af" : "#003b27" }}
+                      disabled={isSubmittingLiquidation}
                     >
-                      <CheckCircle className="h-5 w-5 mr-2" />
-                      Submit Report
+                      {isSubmittingLiquidation ? (
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle className="h-5 w-5 mr-2" />
+                      )}
+                      {isSubmittingLiquidation ? "Submitting..." : "Submit Report"}
                     </Button>
                     <Button
                       onClick={handleLiquidationCancel}
                       className="flex-1 h-12 text-base font-semibold text-white shadow-lg hover:shadow-xl transition-all"
                       style={{ backgroundColor: "#ef4444" }}
+                      disabled={isSubmittingLiquidation}
                     >
                       <X className="h-5 w-5 mr-2" />
                       Cancel
