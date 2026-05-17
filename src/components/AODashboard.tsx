@@ -5109,7 +5109,7 @@ function AODashboard({
 
         {/* Activity Log Detail Dialog */}
         <Dialog open={isLogDetailOpen} onOpenChange={setIsLogDetailOpen}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-black border-0 shadow-lg">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-black border-0 shadow-lg" onCloseAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader className="text-black border-b border-gray-200 pb-4 mb-4">
               <DialogTitle className="text-2xl font-bold text-black" style={{ color: "#003b27" }}>
                 Activity Details
