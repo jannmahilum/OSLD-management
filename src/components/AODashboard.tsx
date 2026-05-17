@@ -5295,7 +5295,7 @@ function AODashboard({
                                               size="sm"
                                               variant="outline"
                                               className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2"
-                                              onClick={() => { const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason }; setPreviewAnnotation(ann); setIsLogDetailOpen(false); setTimeout(() => setIsPreviewAnnotationOpen(true), 0); }}
+                                              onClick={() => { const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason }; setPreviewAnnotation(ann); setIsPreviewAnnotationOpen(true); }}
                                             >
                                               <Eye className="h-3 w-3 mr-1" />
                                               View Annotated
@@ -8180,7 +8180,7 @@ function AODashboard({
       </Dialog>
       {/* Annotation Viewer Dialog (read-only for submitter) */}
       <Dialog open={isPreviewAnnotationOpen} onOpenChange={(open) => { setIsPreviewAnnotationOpen(open); if (!open) setPreviewAnnotation(null); }}>
-        <DialogContent className="max-w-5xl w-full h-[92vh] flex flex-col p-0 gap-0">
+        <DialogContent className="max-w-5xl w-full h-[92vh] flex flex-col p-0 gap-0" onInteractOutside={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader className="px-4 py-3 border-b shrink-0">
             <DialogTitle className="text-sm font-medium truncate">
               {previewAnnotation?.name.includes(':') ? previewAnnotation.name.split(':')[0].trim() : previewAnnotation?.name}
