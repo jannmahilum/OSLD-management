@@ -338,9 +338,12 @@ function AODashboard({
       const primaryUrl = uploads[0].url;
       const allFileNames = uploads.map(u => u.name).join(' | ');
       const allFileUrls = uploads.map(u => u.url).join(' | ');
+      if (!primaryUrl || !allFileUrls || !allFileNames) {
+        throw new Error('File upload did not return a valid URL.');
+      }
 
       // Step 3: Update submission row with actual file URLs
-      await supabase
+      const { error: updateError } = await supabase
         .from('submissions')
         .update({
           file_url: primaryUrl,
@@ -348,6 +351,10 @@ function AODashboard({
           file_urls: allFileUrls,
         })
         .eq('id', submissionId);
+      
+      if (updateError) {
+        throw updateError;
+      }
 
       // Check if this is a revision for an existing "For Revision" submission
       // If so, update the old "For Revision" submission to "Pending"
@@ -503,9 +510,12 @@ function AODashboard({
       const primaryUrl = uploads[0].url;
       const allFileNames = uploads.map(u => u.name).join(' | ');
       const allFileUrls = uploads.map(u => u.url).join(' | ');
+      if (!primaryUrl || !allFileUrls || !allFileNames) {
+        throw new Error('File upload did not return a valid URL.');
+      }
 
       // Step 3: Update submission row with actual file URLs
-      await supabase
+      const { error: updateError } = await supabase
         .from('submissions')
         .update({
           file_url: primaryUrl,
@@ -513,6 +523,10 @@ function AODashboard({
           file_urls: allFileUrls,
         })
         .eq('id', submissionId);
+      
+      if (updateError) {
+        throw updateError;
+      }
 
       // Check if this is a revision for an existing "For Revision" submission
       // If so, update the old "For Revision" submission to "Pending"
@@ -545,7 +559,13 @@ function AODashboard({
       setShowSuccessDialog(true);
     } catch (error: unknown) {
       console.error('Error submitting liquidation report:', error);
-      alert('Failed to submit liquidation report. Please try again.');
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+            ? error
+            : 'Please try again.';
+      alert(`Failed to submit liquidation report: ${message}`);
     } finally {
       setIsSubmittingLiquidation(false);
     }
@@ -2776,16 +2796,24 @@ function AODashboard({
 
         const fileNamesStr = uploadResults.map(r => r.name).join(' | ');
         const primaryFileUrl = uploadResults[0].url;
+        const allFileUrls = uploadResults.map(r => r.url).join(' | ');
+        if (!primaryFileUrl || !allFileUrls || !fileNamesStr) {
+          throw new Error('File upload did not return a valid URL.');
+        }
 
         // Step 3: Update submission row with actual file URLs
-        await supabase
+        const { error: updateError } = await supabase
           .from('submissions')
           .update({
             file_url: primaryFileUrl,
             file_name: fileNamesStr,
-            file_urls: uploadResults.map(r => r.url).join(' | '),
+            file_urls: allFileUrls,
           })
           .eq('id', submissionId);
+        
+        if (updateError) {
+          throw updateError;
+        }
 
         // Create notification for target organization (reuse targetOrg from above)
         const orgFullNames: Record<string, string> = {
@@ -2833,7 +2861,13 @@ function AODashboard({
         handleCancelActivity();
       } catch (error) {
         console.error('Error submitting activity:', error);
-        alert('Failed to submit activity request. Please try again.');
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'string'
+              ? error
+              : 'Please try again.';
+        alert(`Failed to submit activity request: ${message}`);
       } finally {
         setIsSubmittingActivity(false);
       }
