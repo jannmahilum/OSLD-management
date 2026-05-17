@@ -657,11 +657,22 @@ export default function LSGDashboard() {
   // Preview annotation state (for submitter "View Annotated" flow)
   const [previewAnnotation, setPreviewAnnotation] = useState<{ url: string; name: string; submissionId: string; revisionReason?: string } | null>(null);
   const [isPreviewAnnotationOpen, setIsPreviewAnnotationOpen] = useState(false);
+  const [shouldOpenPreviewAnnotation, setShouldOpenPreviewAnnotation] = useState(false);
 
   // Revision upload state (for submitter "For Revision" flow)
   const [revisionUploadFile, setRevisionUploadFile] = useState<{ submissionId: string; fileUrl: string; fileName: string } | null>(null);
   const [revisionUploadInput, setRevisionUploadInput] = useState<File | null>(null);
   const [isUploadingRevision, setIsUploadingRevision] = useState(false);
+
+  useEffect(() => {
+    if (!shouldOpenPreviewAnnotation) return;
+    if (isLogDetailOpen) return;
+    const id = window.setTimeout(() => {
+      setIsPreviewAnnotationOpen(true);
+    }, 200);
+    setShouldOpenPreviewAnnotation(false);
+    return () => window.clearTimeout(id);
+  }, [shouldOpenPreviewAnnotation, isLogDetailOpen]);
 
   // Accomplishment Report state
   const [accomplishmentActivityTitle, setAccomplishmentActivityTitle] = useState("");
@@ -4759,7 +4770,17 @@ export default function LSGDashboard() {
                                               size="sm"
                                               variant="outline"
                                               className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2"
-                                              onClick={() => { const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason }; setPreviewAnnotation(ann); setIsLogDetailOpen(false); setIsPreviewAnnotationOpen(true); }}
+                                              onClick={() => {
+                                                const ann = {
+                                                  url: file.url,
+                                                  name: file.name,
+                                                  submissionId: String(subData.id),
+                                                  revisionReason: subData.revision_reason,
+                                                };
+                                                setPreviewAnnotation(ann);
+                                                setIsLogDetailOpen(false);
+                                                setShouldOpenPreviewAnnotation(true);
+                                              }}
                                             >
                                               <Eye className="h-3 w-3 mr-1" />
                                               View Annotated
