@@ -114,7 +114,6 @@ export default function LoginPage() {
     memorandums: [],
     functionalCharts: [],
   });
-  const now = new Date();
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
     const stored = localStorage.getItem("osld_theme");
@@ -142,13 +141,6 @@ export default function LoginPage() {
   });
 
   const selectedOrg = watch("organization");
-
-  const greeting = (() => {
-    const hour = now.getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  })();
 
   useEffect(() => {
     const loadPortalDocuments = async () => {
@@ -378,7 +370,11 @@ export default function LoginPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {portalDocs.announcements.length === 0 ? null : (
+            {portalDocs.announcements.length === 0 ? (
+              <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
+                OSLD hasn't uploaded announcements yet.
+              </div>
+            ) : (
               <div className="max-h-56 space-y-2 overflow-auto pr-1">
                 {portalDocs.announcements.map((a) => (
                   <div
@@ -421,34 +417,38 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {portalDocs.memorandums.length === 0
-              ? null
-              : portalDocs.memorandums.map((m) => (
-                  <div
-                    key={m.id}
-                    className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                        <span className="truncate">{m.file_name}</span>
-                      </div>
-                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                        {new Date(m.uploaded_at).toLocaleString()}
-                      </div>
+            {portalDocs.memorandums.length === 0 ? (
+              <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
+                OSLD hasn't uploaded memorandums yet.
+              </div>
+            ) : (
+              portalDocs.memorandums.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                      <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                      <span className="truncate">{m.file_name}</span>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                      onClick={() => window.open(m.file_url, "_blank")}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      View
-                    </Button>
+                    <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                      {new Date(m.uploaded_at).toLocaleString()}
+                    </div>
                   </div>
-                ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                    onClick={() => window.open(m.file_url, "_blank")}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    View
+                  </Button>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
@@ -463,7 +463,11 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {portalDocs.functionalCharts.length === 0 ? null : (
+          {portalDocs.functionalCharts.length === 0 ? (
+            <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
+              OSLD hasn't uploaded the functional flow yet.
+            </div>
+          ) : (
             <div className="space-y-2">
               {portalDocs.functionalCharts.map((f) => (
                 <div
@@ -581,7 +585,7 @@ export default function LoginPage() {
                       Sign In
                     </CardTitle>
                     <CardDescription className="text-slate-700 dark:text-slate-300">
-                      {greeting}. Continue to your organization dashboard.
+                      Continue to your organization dashboard.
                     </CardDescription>
                   </div>
                 </div>
