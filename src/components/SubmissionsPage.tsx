@@ -1284,7 +1284,14 @@ export default function SubmissionsPage({
                                       size="sm"
                                       variant="outline"
                                       className="border-orange-400 text-orange-700 hover:bg-orange-100"
-                                      onClick={() => setPreviewFile({ ...file, submissionId: selectedSubmission.id.toString(), annotateMode: false })}
+                                      onClick={() => {
+                                        setIsDetailDialogOpen(false);
+                                        setPreviewFile({
+                                          ...file,
+                                          submissionId: selectedSubmission.id.toString(),
+                                          annotateMode: false,
+                                        });
+                                      }}
                                     >
                                       <Eye className="h-3.5 w-3.5 mr-1" />
                                       View Annotated
@@ -1351,7 +1358,14 @@ export default function SubmissionsPage({
                                   size="sm"
                                   variant="outline"
                                   className="border-green-500 text-green-700 hover:bg-green-100 shrink-0"
-                                  onClick={() => setPreviewFile({ ...file, submissionId: selectedSubmission.id.toString(), annotateMode: false })}
+                                  onClick={() => {
+                                    setIsDetailDialogOpen(false);
+                                    setPreviewFile({
+                                      ...file,
+                                      submissionId: selectedSubmission.id.toString(),
+                                      annotateMode: false,
+                                    });
+                                  }}
                                 >
                                   <Eye className="h-4 w-4 mr-1" />
                                   View
@@ -1396,7 +1410,14 @@ export default function SubmissionsPage({
                                 size="sm"
                                 variant="outline"
                                 className="border-[#003b27] text-[#003b27] hover:bg-[#003b27]/10"
-                                onClick={() => setPreviewFile({ ...file, submissionId: selectedSubmission.id.toString(), annotateMode: true })}
+                                onClick={() => {
+                                  setIsDetailDialogOpen(false);
+                                  setPreviewFile({
+                                    ...file,
+                                    submissionId: selectedSubmission.id.toString(),
+                                    annotateMode: true,
+                                  });
+                                }}
                               >
                                 <Pen className="h-3.5 w-3.5 mr-1" />
                                 Annotate
@@ -1405,7 +1426,14 @@ export default function SubmissionsPage({
                             <Button
                               size="sm"
                               style={{ backgroundColor: "#003b27" }}
-                              onClick={() => setPreviewFile({ ...file, submissionId: selectedSubmission.id.toString(), annotateMode: false })}
+                              onClick={() => {
+                                setIsDetailDialogOpen(false);
+                                setPreviewFile({
+                                  ...file,
+                                  submissionId: selectedSubmission.id.toString(),
+                                  annotateMode: false,
+                                });
+                              }}
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               View
@@ -1506,6 +1534,7 @@ export default function SubmissionsPage({
                 fileName={previewFile.name}
                 submissionId={previewFile.submissionId}
                 initialAnnotateMode={previewFile.annotateMode}
+                readOnly={!previewFile.annotateMode}
                 onAnnotationSaved={() => {
                   // Refresh annotated file urls after saving so badge updates
                   if (selectedSubmission) {
