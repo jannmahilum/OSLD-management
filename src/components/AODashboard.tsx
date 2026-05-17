@@ -5292,6 +5292,7 @@ function AODashboard({
                                           </div>
                                           <div className="flex gap-1.5 shrink-0">
                                             <Button
+                                              type="button"
                                               size="sm"
                                               variant="outline"
                                               className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2"
@@ -8178,33 +8179,39 @@ function AODashboard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Annotation Viewer Dialog (read-only for submitter) */}
-      <Dialog open={isPreviewAnnotationOpen} onOpenChange={(open) => { setIsPreviewAnnotationOpen(open); if (!open) setPreviewAnnotation(null); }}>
-        <DialogContent className="max-w-5xl w-full h-[92vh] flex flex-col p-0 gap-0" onInteractOutside={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()}>
-          <DialogHeader className="px-4 py-3 border-b shrink-0">
-            <DialogTitle className="text-sm font-medium truncate">
-              {previewAnnotation?.name.includes(':') ? previewAnnotation.name.split(':')[0].trim() : previewAnnotation?.name}
-            </DialogTitle>
-            {previewAnnotation?.revisionReason && (
-              <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 mt-1">
-                <span className="font-semibold">Revision note:</span> {previewAnnotation.revisionReason}
-              </p>
-            )}
-          </DialogHeader>
-          <div className="flex-1 overflow-hidden">
-            {previewAnnotation && (
-              <FileAnnotationViewer
-                key={`${previewAnnotation.submissionId}-${previewAnnotation.url}`}
-                url={previewAnnotation.url}
-                fileName={previewAnnotation.name}
-                submissionId={previewAnnotation.submissionId}
-                initialAnnotateMode={false}
-                readOnly={true}
-              />
-            )}
+      {isPreviewAnnotationOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/80 flex flex-col">
+          <div className="bg-white w-full max-w-5xl mx-auto mt-[4vh] h-[92vh] flex flex-col rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate">
+                  {previewAnnotation?.name.includes(':') ? previewAnnotation.name.split(':')[0].trim() : previewAnnotation?.name}
+                </div>
+                {previewAnnotation?.revisionReason && (
+                  <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 mt-1">
+                    <span className="font-semibold">Revision note:</span> {previewAnnotation.revisionReason}
+                  </p>
+                )}
+              </div>
+              <Button type="button" variant="ghost" size="icon" onClick={() => { setIsPreviewAnnotationOpen(false); setPreviewAnnotation(null); }}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-hidden bg-white">
+              {previewAnnotation && (
+                <FileAnnotationViewer
+                  key={`${previewAnnotation.submissionId}-${previewAnnotation.url}`}
+                  url={previewAnnotation.url}
+                  fileName={previewAnnotation.name}
+                  submissionId={previewAnnotation.submissionId}
+                  initialAnnotateMode={false}
+                  readOnly={true}
+                />
+              )}
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
       <Toaster />
     </div>
   );

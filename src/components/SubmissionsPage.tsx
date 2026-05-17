@@ -1281,6 +1281,7 @@ export default function SubmissionsPage({
                                   <span className="text-sm font-medium text-orange-800 truncate flex-1">{label}</span>
                                   <div className="flex gap-2 shrink-0">
                                     <Button
+                                      type="button"
                                       size="sm"
                                       variant="outline"
                                       className="border-orange-400 text-orange-700 hover:bg-orange-100"
@@ -1481,12 +1482,12 @@ export default function SubmissionsPage({
 
       {/* File Preview Modal with Annotation */}
       {previewFile && (
-        <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
-          <DialogContent className="max-w-5xl w-full h-[92vh] flex flex-col p-0 gap-0">
-            <DialogHeader className="px-4 py-3 border-b flex-row items-center justify-between shrink-0">
-              <DialogTitle className="text-base font-semibold text-[#003b27] truncate pr-4">
+        <div className="fixed inset-0 z-[200] bg-black/80 flex flex-col">
+          <div className="bg-white w-full max-w-5xl mx-auto mt-[4vh] h-[92vh] flex flex-col rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b flex items-center justify-between gap-3">
+              <div className="text-base font-semibold text-[#003b27] truncate pr-4">
                 {previewFile.name.includes(':') ? previewFile.name.split(':')[0].trim() : previewFile.name}
-              </DialogTitle>
+              </div>
               <div className="flex items-center gap-2 shrink-0">
                 <a
                   href={previewFile.url}
@@ -1496,10 +1497,12 @@ export default function SubmissionsPage({
                 >
                   Open in new tab
                 </a>
+                <Button type="button" variant="ghost" size="icon" onClick={() => setPreviewFile(null)}>
+                  <X className="h-5 w-5" />
+                </Button>
               </div>
-            </DialogHeader>
-            <div className="flex-1 overflow-hidden">
-              {/* Key uses both submissionId AND url to ensure annotations are never shared across files */}
+            </div>
+            <div className="flex-1 overflow-hidden bg-white">
               <FileAnnotationViewer
                 key={`${previewFile.submissionId}-${previewFile.url}`}
                 url={previewFile.url}
@@ -1507,15 +1510,14 @@ export default function SubmissionsPage({
                 submissionId={previewFile.submissionId}
                 initialAnnotateMode={previewFile.annotateMode}
                 onAnnotationSaved={() => {
-                  // Refresh annotated file urls after saving so badge updates
                   if (selectedSubmission) {
                     checkAnnotatedFiles(selectedSubmission).then(setAnnotatedFileUrls);
                   }
                 }}
               />
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+        </div>
       )}
 
       {/* For Revision Dialog */}
