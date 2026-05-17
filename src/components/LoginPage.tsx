@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { motion } from "framer-motion";
 import {
-  Bell,
   Building2,
   Download,
   Eye,
@@ -14,7 +13,6 @@ import {
   Mail,
   Moon,
   PanelRight,
-  Pin,
   Sun,
   UserCog,
   Users,
@@ -46,12 +44,6 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "./ui/drawer";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./ui/tooltip";
 import { supabase } from "../lib/supabase";
 
 const loginSchema = z.object({
@@ -101,49 +93,27 @@ const portalOrganizations = [
   { acronym: "TGP", name: "The Gold Panicles", icon: Users },
 ];
 
-const sampleAnnouncements = [
-  {
-    title: "Submission of RLTC due on May 15",
-    tag: "Deadline",
-    pinned: true,
-    dateTime: "May 15 · 5:00 PM",
-  },
-  {
-    title: "Updated liquidation guidelines released",
-    tag: "Memo",
-    pinned: false,
-    dateTime: "May 12 · 9:30 AM",
-  },
-  {
-    title: "USG leadership orientation this Friday",
-    tag: "Event",
-    pinned: false,
-    dateTime: "May 10 · 2:00 PM",
-  },
-];
-
-const sampleMemos = [
-  {
-    title: "Revised Liquidation Requirements for Student Organizations",
-    memoNo: "OSLD-MEMO-2026-014",
-    dateIssued: "May 12, 2026",
-  },
-  {
-    title: "Guidelines on Financial Monitoring and Submission Deadlines",
-    memoNo: "OSLD-MEMO-2026-011",
-    dateIssued: "May 06, 2026",
-  },
-  {
-    title: "Compliance Checklist Updates for Accredited Organizations",
-    memoNo: "OSLD-MEMO-2026-008",
-    dateIssued: "Apr 28, 2026",
-  },
-];
+type OrgDocument = {
+  id: string;
+  document_type: string;
+  file_name: string;
+  file_url: string;
+  uploaded_at: string;
+};
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [portalDocs, setPortalDocs] = useState<{
+    announcements: OrgDocument[];
+    memorandums: OrgDocument[];
+    functionalCharts: OrgDocument[];
+  }>({
+    announcements: [],
+    memorandums: [],
+    functionalCharts: [],
+  });
   const now = new Date();
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
@@ -179,6 +149,37 @@ export default function LoginPage() {
     if (hour < 18) return "Good afternoon";
     return "Good evening";
   })();
+
+  useEffect(() => {
+    const loadPortalDocuments = async () => {
+      const { data, error } = await supabase
+        .from("org_documents")
+        .select("id, document_type, file_name, file_url, uploaded_at")
+        .eq("organization", "osld")
+        .order("uploaded_at", { ascending: false });
+
+      if (error || !data) {
+        setPortalDocs({
+          announcements: [],
+          memorandums: [],
+          functionalCharts: [],
+        });
+        return;
+      }
+
+      const announcements = data.filter(
+        (d) => d.document_type === "announcement",
+      );
+      const memorandums = data.filter((d) => d.document_type === "memorandum");
+      const functionalCharts = data.filter(
+        (d) => d.document_type === "functional_chart",
+      );
+
+      setPortalDocs({ announcements, memorandums, functionalCharts });
+    };
+
+    loadPortalDocuments();
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -377,35 +378,36 @@ export default function LoginPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="max-h-56 space-y-2 overflow-auto pr-1">
-              {sampleAnnouncements.map((a) => (
-                <div
-                  key={a.title}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      {a.pinned && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#D4AF37]/20 px-2 py-0.5 text-[11px] font-semibold text-[#6b4d00] dark:text-[#D4AF37] dark:bg-[#D4AF37]/10">
-                          <Pin className="h-3 w-3" />
-                          Pinned
-                        </span>
-                      )}
-                      <span className="inline-flex items-center rounded-full bg-slate-900/5 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">
-                        {a.tag}
-                      </span>
+            {portalDocs.announcements.length === 0 ? null : (
+              <div className="max-h-56 space-y-2 overflow-auto pr-1">
+                {portalDocs.announcements.map((a) => (
+                  <div
+                    key={a.id}
+                    className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                        <span className="truncate">{a.file_name}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                        {new Date(a.uploaded_at).toLocaleString()}
+                      </div>
                     </div>
-                    <div className="mt-2 truncate text-sm font-medium text-slate-900 dark:text-slate-50">
-                      {a.title}
-                    </div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {a.dateTime}
-                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                      onClick={() => window.open(a.file_url, "_blank")}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
                   </div>
-                  <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#014421]/70 dark:bg-[#D4AF37]/70" />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -419,32 +421,34 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {sampleMemos.map((m) => (
-              <div
-                key={m.memoNo}
-                className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                    <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                    <span className="truncate">{m.title}</span>
+            {portalDocs.memorandums.length === 0
+              ? null
+              : portalDocs.memorandums.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                        <span className="truncate">{m.file_name}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                        {new Date(m.uploaded_at).toLocaleString()}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                      onClick={() => window.open(m.file_url, "_blank")}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
-                    <span className="font-medium">{m.memoNo}</span>
-                    <span>{m.dateIssued}</span>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  View
-                </Button>
-              </div>
-            ))}
+                ))}
           </CardContent>
         </Card>
       </div>
@@ -459,51 +463,36 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TooltipProvider>
-            <div className="grid gap-3 sm:grid-cols-9 sm:items-center">
-              {[
-                {
-                  key: "AO",
-                  desc: "Submissions and compliance from recognized organizations.",
-                },
-                { key: "LCO", desc: "Coordination and campus-level consolidation." },
-                { key: "USG", desc: "Student government endorsement and routing." },
-                { key: "OSLD", desc: "Institutional evaluation and final approval." },
-                { key: "COA", desc: "Audit validation and financial oversight." },
-              ].map((n, idx, arr) => (
+          {portalDocs.functionalCharts.length === 0 ? null : (
+            <div className="space-y-2">
+              {portalDocs.functionalCharts.map((f) => (
                 <div
-                  key={n.key}
-                  className="contents"
+                  key={f.id}
+                  className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
                 >
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="rounded-xl border border-white/20 bg-white/60 px-4 py-3 text-center text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-white/70 dark:bg-white/5 dark:border-white/10 dark:text-slate-50 dark:hover:bg-white/10">
-                        {n.key}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[260px] bg-slate-900 text-slate-50">
-                      {n.desc}
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {idx < arr.length - 1 && (
-                    <motion.div
-                      aria-hidden
-                      className="hidden sm:flex items-center justify-center"
-                      initial={{ opacity: 0.6 }}
-                      animate={{ opacity: [0.45, 0.95, 0.45] }}
-                      transition={{ duration: 2.2, repeat: Infinity }}
-                    >
-                      <div className="h-px w-full bg-gradient-to-r from-[#014421]/30 via-[#D4AF37]/60 to-[#014421]/30 dark:from-[#D4AF37]/30 dark:via-white/25 dark:to-[#D4AF37]/30" />
-                    </motion.div>
-                  )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                      <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                      <span className="truncate">{f.file_name}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                      {new Date(f.uploaded_at).toLocaleString()}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                    onClick={() => window.open(f.file_url, "_blank")}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    View
+                  </Button>
                 </div>
               ))}
             </div>
-            <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-              Hover each node for role details.
-            </div>
-          </TooltipProvider>
+          )}
         </CardContent>
       </Card>
     </div>
