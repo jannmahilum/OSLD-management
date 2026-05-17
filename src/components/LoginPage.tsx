@@ -314,6 +314,10 @@ export default function LoginPage() {
                 tracking, financial monitoring, and organizational coordination
                 across Caraga State University.
               </CardDescription>
+              <div className="text-sm italic text-slate-700 dark:text-slate-300">
+                “Leadership is not about control, but about transparency,
+                accountability, and service.”
+              </div>
             </div>
           </div>
         </CardHeader>
