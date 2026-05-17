@@ -650,7 +650,7 @@ export default function LoginPage() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          <div className="lg:sticky lg:top-8 lg:self-start">
+          <div className="lg:order-2 lg:sticky lg:top-8 lg:self-start">
             <Card className="border-white/20 bg-white/55 backdrop-blur-xl shadow-2xl dark:bg-slate-950/40 dark:border-white/10">
               <div className="h-1.5 w-full rounded-t-xl bg-gradient-to-r from-[#014421] via-[#D4AF37] to-[#014421]" />
               <CardHeader className="space-y-2 pb-6 pt-7">
@@ -817,7 +817,7 @@ export default function LoginPage() {
             </Card>
           </div>
 
-          <div className="hidden lg:block">
+          <div className="hidden lg:order-1 lg:block">
             <div className="mb-4 flex items-center justify-between">
               <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 Information Portal
