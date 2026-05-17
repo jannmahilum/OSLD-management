@@ -7,6 +7,7 @@ import {
 } from "react";
 // React needed for JSX in component arrays
 import React from "react";
+import { renderAsync } from "docx-preview";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -422,6 +423,12 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
   const [annotationMode, setAnnotationMode] = useState(!!initialAnnotateMode);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [hasSavedAnnotations, setHasSavedAnnotations] = useState(false);
+  const [isLoadingAnnotations, setIsLoadingAnnotations] = useState(false);
+  const [annotationsError, setAnnotationsError] = useState<string | null>(null);
+
+  const docxContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isLoadingDoc, setIsLoadingDoc] = useState(false);
+  const [docError, setDocError] = useState(false);
 
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInput, setTextInput] = useState("");
@@ -430,30 +437,103 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
   const lowerUrl = url.toLowerCase().split("?")[0];
   const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/.test(lowerUrl);
   const isPdf = lowerUrl.endsWith(".pdf");
+  const isDocx = lowerUrl.endsWith(".docx");
+  const canonicalUrl = useMemo(() => url.split("?")[0], [url]);
 
   // Fetch annotations from Supabase using BOTH submission_id and file_url
   useEffect(() => {
     if (!submissionId || !url) {
       setAnnotations([]);
       setHasSavedAnnotations(false);
+      setIsLoadingAnnotations(false);
+      setAnnotationsError(null);
       return;
     }
-    supabase
-      .from("annotations")
-      .select("data")
-      .eq("submission_id", submissionId)
-      .eq("file_url", url)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Failed to fetch annotations:", error);
-          return;
-        }
-        const loaded: Annotation[] = data?.data ?? [];
-        setAnnotations(loaded);
-        setHasSavedAnnotations(loaded.length > 0);
-      });
-  }, [url, submissionId]);
+    let cancelled = false;
+    setIsLoadingAnnotations(true);
+    setAnnotationsError(null);
+
+    (async () => {
+      const tryFetch = async (fileUrl: string) =>
+        supabase
+          .from("annotations")
+          .select("file_url,data")
+          .eq("submission_id", submissionId)
+          .eq("file_url", fileUrl)
+          .maybeSingle();
+
+      const first = await tryFetch(url);
+      if (cancelled) return;
+
+      if (first.error) {
+        setIsLoadingAnnotations(false);
+        setAnnotationsError(first.error.message || "Failed to fetch annotations.");
+        return;
+      }
+
+      const firstLoaded: Annotation[] = first.data?.data ?? [];
+      if (firstLoaded.length > 0 || canonicalUrl === url) {
+        setAnnotations(firstLoaded);
+        setHasSavedAnnotations(firstLoaded.length > 0);
+        setIsLoadingAnnotations(false);
+        return;
+      }
+
+      const second = await tryFetch(canonicalUrl);
+      if (cancelled) return;
+
+      if (second.error) {
+        setIsLoadingAnnotations(false);
+        setAnnotationsError(second.error.message || "Failed to fetch annotations.");
+        return;
+      }
+
+      const secondLoaded: Annotation[] = second.data?.data ?? [];
+      setAnnotations(secondLoaded);
+      setHasSavedAnnotations(secondLoaded.length > 0);
+      setIsLoadingAnnotations(false);
+    })().catch((e) => {
+      if (cancelled) return;
+      setIsLoadingAnnotations(false);
+      setAnnotationsError(e instanceof Error ? e.message : "Failed to fetch annotations.");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url, canonicalUrl, submissionId]);
+
+  useEffect(() => {
+    if (!isDocx) {
+      setIsLoadingDoc(false);
+      setDocError(false);
+      return;
+    }
+    setIsLoadingDoc(true);
+    setDocError(false);
+
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Failed to load file (${res.status})`);
+      const buf = await res.arrayBuffer();
+      if (cancelled) return;
+      const container = docxContainerRef.current;
+      if (!container) return;
+      container.innerHTML = "";
+      await renderAsync(buf, container, undefined, { inWrapper: false });
+      if (cancelled) return;
+      setIsLoadingDoc(false);
+    })().catch(() => {
+      if (cancelled) return;
+      setIsLoadingDoc(false);
+      setDocError(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isDocx, url]);
 
   useEffect(() => {
     if (!isPdf) return;
@@ -605,12 +685,16 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
 
       {/* Read-only annotation indicator */}
       {readOnly && (
-        <div className={`border-b px-3 py-2 flex items-center gap-2 ${hasSavedAnnotations ? "bg-purple-50" : "bg-amber-50"}`}>
-          <span className={`flex items-center gap-1.5 text-xs font-medium ${hasSavedAnnotations ? "text-purple-700" : "text-amber-700"}`}>
+        <div className={`border-b px-3 py-2 flex items-center gap-2 ${annotationsError ? "bg-red-50" : hasSavedAnnotations ? "bg-purple-50" : "bg-amber-50"}`}>
+          <span className={`flex items-center gap-1.5 text-xs font-medium ${annotationsError ? "text-red-700" : hasSavedAnnotations ? "text-purple-700" : "text-amber-700"}`}>
             <Pen className="h-3.5 w-3.5" />
-            {hasSavedAnnotations
-              ? "Reviewer annotations are shown on the file below"
-              : "No annotations from reviewer yet — the file is shown as-is"}
+            {isLoadingAnnotations
+              ? "Loading reviewer annotations…"
+              : annotationsError
+                ? "Failed to load reviewer annotations"
+                : hasSavedAnnotations
+                  ? "Reviewer annotations are shown on the file below"
+                  : "No annotations from reviewer yet — the file is shown as-is"}
           </span>
         </div>
       )}
@@ -666,9 +750,17 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
         )}
 
         {!isPdf && !isImage && (
-          <div className="bg-white rounded shadow" style={{ height: "calc(92vh - 90px)" }}>
-            <iframe src={`https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`}
-              className="w-full h-full border-0 rounded" title={fileName} />
+          <div className="bg-white rounded shadow overflow-auto" style={{ height: "calc(92vh - 90px)" }}>
+            {isDocx ? (
+              <div className="p-3">
+                {isLoadingDoc && <div className="text-gray-500 text-sm p-4 text-center">Loading document…</div>}
+                {docError && <div className="text-red-600 text-sm p-4 bg-white rounded shadow">Failed to load document.</div>}
+                <div ref={docxContainerRef} />
+              </div>
+            ) : (
+              <iframe src={`https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`}
+                className="w-full h-full border-0 rounded" title={fileName} />
+            )}
           </div>
         )}
       </div>
