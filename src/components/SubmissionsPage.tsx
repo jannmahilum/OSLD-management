@@ -44,6 +44,8 @@ interface SubmissionsPageProps {
   onActivityChange?: () => void; // Callback to refresh activity logs in parent
   activeSubmissionTab?: string;
   setActiveSubmissionTab?: (tab: string) => void;
+  openSubmissionId?: string | null;
+  onOpenSubmissionConsumed?: () => void;
 }
 
 interface Submission {
@@ -88,6 +90,8 @@ export default function SubmissionsPage({
   onActivityChange,
   activeSubmissionTab = "Request to Conduct Activity",
   setActiveSubmissionTab,
+  openSubmissionId,
+  onOpenSubmissionConsumed,
 }: SubmissionsPageProps) {
 
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
@@ -175,6 +179,15 @@ export default function SubmissionsPage({
   useEffect(() => {
     loadSubmissions();
   }, [orgShortName]);
+
+  useEffect(() => {
+    if (!openSubmissionId) return;
+    const sub = submissions.find((s) => String(s.id) === String(openSubmissionId));
+    if (!sub) return;
+    handleViewDetails(sub).finally(() => {
+      onOpenSubmissionConsumed?.();
+    });
+  }, [openSubmissionId, submissions]);
 
   const loadSubmissions = async () => {
     // Note: We use select('*') instead of joining osld_events because there's no FK constraint.

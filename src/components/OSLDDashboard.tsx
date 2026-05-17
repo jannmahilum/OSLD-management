@@ -514,6 +514,23 @@ export default function OSLDDashboard() {
     loadActivityLogs();
   }, []);
 
+  useEffect(() => {
+    const submissionsChannel = supabase
+      .channel('osld-submissions-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'submissions' },
+        () => {
+          loadActivityLogs();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      submissionsChannel.unsubscribe();
+    };
+  }, []);
+
   // Add/Edit modal state
   const [isOfficerModalOpen, setIsOfficerModalOpen] = useState(false);
   const [isAdviserModalOpen, setIsAdviserModalOpen] = useState(false);
@@ -620,6 +637,7 @@ export default function OSLDDashboard() {
   };
   const [selectedActivityLog, setSelectedActivityLog] = useState<any | null>(null);
   const [isActivityLogDetailOpen, setIsActivityLogDetailOpen] = useState(false);
+  const [openSubmissionId, setOpenSubmissionId] = useState<string | null>(null);
   const [orgLogo, setOrgLogo] = useState<string>("");
   const [logFilterType, setLogFilterType] = useState("all");
   const [logFilterAction, setLogFilterAction] = useState("all");
@@ -2942,6 +2960,147 @@ ${deadlineInfo}`;
         </div>
       </div>
 
+      <Dialog
+        open={isActivityLogDetailOpen}
+        onOpenChange={(open) => {
+          setIsActivityLogDetailOpen(open);
+          if (!open) setSelectedActivityLog(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto bg-white text-black border-0 shadow-lg">
+          <DialogHeader className="text-black border-b border-gray-200 pb-4 mb-4">
+            <DialogTitle className="text-2xl font-bold text-black" style={{ color: "#003b27" }}>
+              Activity Details
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600">
+              Review files and open the submission to approve/reject/request revision.
+            </DialogDescription>
+          </DialogHeader>
+          {!selectedActivityLog ? (
+            <div className="py-8 text-center text-gray-500 font-medium">
+              Loading activity details...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3 bg-gradient-to-r from-green-50 to-transparent rounded-lg border border-green-100">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Activity Name</p>
+                <p className="text-lg font-semibold text-gray-900 mt-1">{selectedActivityLog.documentName}</p>
+              </div>
+
+              {(() => {
+                const submissions: any[] = Array.isArray(selectedActivityLog.allSubmissions)
+                  ? selectedActivityLog.allSubmissions
+                  : [];
+
+                if (submissions.length === 0) {
+                  return (
+                    <div className="py-6 text-center text-gray-500">
+                      No submissions found for this activity.
+                    </div>
+                  );
+                }
+
+                const openSubmission = (sub: any) => {
+                  setOpenSubmissionId(String(sub.id));
+                  if (sub.submission_type) setActiveSubmissionTab(sub.submission_type);
+                  setIsActivityLogDetailOpen(false);
+                  setActiveNav("Submissions");
+                };
+
+                return (
+                  <div className="space-y-3">
+                    {submissions.map((sub) => (
+                      <div
+                        key={String(sub.id)}
+                        className="p-4 border border-gray-200 rounded-lg bg-white"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-gray-900">{sub.submission_type}</span>
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(sub.status)}`}>
+                                {sub.status}
+                              </span>
+                              <span className="text-xs text-gray-600">
+                                {sub.organization}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Submitted: {sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : "—"} · To: {sub.submitted_to || "—"}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              className="bg-[#003b27] hover:bg-[#004d33] text-white text-xs h-8 px-3"
+                              onClick={() => openSubmission(sub)}
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              View Details
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-[#003b27] text-[#003b27] hover:bg-[#003b27]/10 text-xs h-8 px-3"
+                              onClick={() => openSubmission(sub)}
+                            >
+                              View Files
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-8 px-3"
+                              onClick={() => openSubmission(sub)}
+                            >
+                              View Annotated
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-gray-300 text-gray-700 hover:bg-gray-50 text-xs h-8 px-3"
+                              onClick={() => openSubmission(sub)}
+                            >
+                              Approve / Reject / For Revision
+                            </Button>
+                          </div>
+                        </div>
+
+                        {(() => {
+                          const names = String(sub.file_name || "").split(" | ").filter(Boolean);
+                          const urls = String(sub.file_urls || sub.file_url || "").split(" | ").filter(Boolean);
+                          const count = Math.min(names.length, urls.length);
+                          if (count === 0) return null;
+                          return (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                                Files
+                              </p>
+                              {Array.from({ length: count }, (_, i) => (
+                                <div key={`${sub.id}-${i}`} className="flex items-center justify-between gap-3 p-2 bg-gray-50 rounded border border-gray-200">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-medium text-gray-800 truncate">{names[i]}</p>
+                                  </div>
+                                  <a href={urls[i]} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                                    <Button size="sm" style={{ backgroundColor: "#003b27" }} className="text-white text-xs h-7 px-2">
+                                      <ExternalLink className="h-3 w-3 mr-1" />
+                                      Open
+                                    </Button>
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Logout Confirmation Dialog */}
       <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -3665,6 +3824,8 @@ ${deadlineInfo}`;
         onActivityChange={fetchActivityLogs}
         activeSubmissionTab={activeSubmissionTab}
         setActiveSubmissionTab={setActiveSubmissionTab}
+        openSubmissionId={openSubmissionId}
+        onOpenSubmissionConsumed={() => setOpenSubmissionId(null)}
       />
     );
   }
