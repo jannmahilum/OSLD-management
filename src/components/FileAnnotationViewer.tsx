@@ -438,7 +438,7 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
   const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/.test(lowerUrl);
   const isPdf = lowerUrl.endsWith(".pdf");
   const isDocx = lowerUrl.endsWith(".docx");
-  const canonicalUrl = useMemo(() => url.split("?")[0], [url]);
+  const canonicalUrl = useMemo(() => url.split("?")[0].trim(), [url]);
 
   useEffect(() => {
     if (!submissionId || !url) {
@@ -466,15 +466,32 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
         return;
       }
 
-      const normalize = (u: string) => u.split("?")[0];
+      const normalize = (u: string) => String(u || "").trim().split("?")[0];
+      console.log("submissionId", submissionId);
+      console.log("file.url", url);
+      console.log("canonicalUrl", canonicalUrl);
+      console.log("annotations rows", data);
       const matches = (data || []).filter((row: any) => normalize(String(row.file_url || "")) === canonicalUrl);
+      console.log("matched annotations", matches);
       const best = matches.sort((a: any, b: any) => {
         const at = a.updated_at ? Date.parse(a.updated_at) : 0;
         const bt = b.updated_at ? Date.parse(b.updated_at) : 0;
         return bt - at;
       })[0];
 
-      const loaded: Annotation[] = best?.data ?? [];
+      const loadedRaw = best?.data;
+      let loaded: Annotation[] = [];
+      if (Array.isArray(loadedRaw)) {
+        loaded = loadedRaw as Annotation[];
+      } else if (typeof loadedRaw === "string") {
+        try {
+          const parsed = JSON.parse(loadedRaw);
+          if (Array.isArray(parsed)) loaded = parsed as Annotation[];
+        } catch {
+          loaded = [];
+        }
+      }
+      console.log("loaded annotations", loaded);
       setAnnotations(loaded);
       setHasSavedAnnotations(loaded.length > 0);
       setIsLoadingAnnotations(false);

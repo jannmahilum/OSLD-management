@@ -1287,12 +1287,7 @@ export default function SubmissionsPage({
                                       size="sm"
                                       variant="outline"
                                       className="border-orange-400 text-orange-700 hover:bg-orange-100"
-                                      onClick={() => {
-                                        const activity = selectedSubmission;
-                                        console.log(activity);
-                                        console.log(activity?.annotated_file);
-                                        setPreviewFile({ ...file, submissionId: selectedSubmission.id.toString(), annotateMode: false });
-                                      }}
+                                      onClick={() => setPreviewFile({ ...file, submissionId: selectedSubmission.id.toString(), annotateMode: false })}
                                     >
                                       <Eye className="h-3.5 w-3.5 mr-1" />
                                       View Annotated
