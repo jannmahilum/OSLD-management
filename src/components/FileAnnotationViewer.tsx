@@ -440,7 +440,6 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
   const isDocx = lowerUrl.endsWith(".docx");
   const canonicalUrl = useMemo(() => url.split("?")[0], [url]);
 
-  // Fetch annotations from Supabase using BOTH submission_id and file_url
   useEffect(() => {
     if (!submissionId || !url) {
       setAnnotations([]);
@@ -454,43 +453,30 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
     setAnnotationsError(null);
 
     (async () => {
-      const tryFetch = async (fileUrl: string) =>
-        supabase
-          .from("annotations")
-          .select("file_url,data")
-          .eq("submission_id", submissionId)
-          .eq("file_url", fileUrl)
-          .maybeSingle();
+      const { data, error } = await supabase
+        .from("annotations")
+        .select("file_url,data,updated_at")
+        .eq("submission_id", submissionId);
 
-      const first = await tryFetch(url);
       if (cancelled) return;
 
-      if (first.error) {
+      if (error) {
         setIsLoadingAnnotations(false);
-        setAnnotationsError(first.error.message || "Failed to fetch annotations.");
+        setAnnotationsError(error.message || "Failed to fetch annotations.");
         return;
       }
 
-      const firstLoaded: Annotation[] = first.data?.data ?? [];
-      if (firstLoaded.length > 0 || canonicalUrl === url) {
-        setAnnotations(firstLoaded);
-        setHasSavedAnnotations(firstLoaded.length > 0);
-        setIsLoadingAnnotations(false);
-        return;
-      }
+      const normalize = (u: string) => u.split("?")[0];
+      const matches = (data || []).filter((row: any) => normalize(String(row.file_url || "")) === canonicalUrl);
+      const best = matches.sort((a: any, b: any) => {
+        const at = a.updated_at ? Date.parse(a.updated_at) : 0;
+        const bt = b.updated_at ? Date.parse(b.updated_at) : 0;
+        return bt - at;
+      })[0];
 
-      const second = await tryFetch(canonicalUrl);
-      if (cancelled) return;
-
-      if (second.error) {
-        setIsLoadingAnnotations(false);
-        setAnnotationsError(second.error.message || "Failed to fetch annotations.");
-        return;
-      }
-
-      const secondLoaded: Annotation[] = second.data?.data ?? [];
-      setAnnotations(secondLoaded);
-      setHasSavedAnnotations(secondLoaded.length > 0);
+      const loaded: Annotation[] = best?.data ?? [];
+      setAnnotations(loaded);
+      setHasSavedAnnotations(loaded.length > 0);
       setIsLoadingAnnotations(false);
     })().catch((e) => {
       if (cancelled) return;
@@ -577,7 +563,7 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
     const { error } = await supabase
       .from("annotations")
       .upsert(
-        { submission_id: submissionId, file_url: url, data: annotations, updated_at: new Date().toISOString() },
+        { submission_id: submissionId, file_url: canonicalUrl, data: annotations, updated_at: new Date().toISOString() },
         { onConflict: "submission_id,file_url" }
       );
     if (error) {
@@ -651,7 +637,7 @@ export default function FileAnnotationViewer({ url, fileName, submissionId, init
                 await supabase
                   .from("annotations")
                   .upsert(
-                    { submission_id: submissionId, file_url: url, data: [], updated_at: new Date().toISOString() },
+                    { submission_id: submissionId, file_url: canonicalUrl, data: [], updated_at: new Date().toISOString() },
                     { onConflict: "submission_id,file_url" }
                   );
               }

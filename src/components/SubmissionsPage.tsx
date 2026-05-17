@@ -159,6 +159,7 @@ export default function SubmissionsPage({
   const checkAnnotatedFiles = useCallback(async (sub: Submission) => {
     const files = getFilesFromSubmission(sub);
     if (files.length === 0) return new Set<string>();
+    const canonicalize = (u: string) => u.split("?")[0];
     const { data } = await supabase
       .from('annotations')
       .select('file_url, data')
@@ -167,7 +168,7 @@ export default function SubmissionsPage({
     const annotated = new Set<string>(
       (data || [])
         .filter((row: any) => Array.isArray(row.data) && row.data.length > 0)
-        .map((row: any) => row.file_url)
+        .map((row: any) => canonicalize(String(row.file_url || "")))
     );
     return annotated;
   }, [getFilesFromSubmission]);
@@ -694,8 +695,9 @@ export default function SubmissionsPage({
   const handleConfirmFileRevision = async () => {
     if (!selectedSubmission) return;
     const files = getFilesFromSubmission(selectedSubmission);
+    const canonicalize = (u: string) => u.split("?")[0];
     // Use annotatedFileUrls as the single source of truth for which files are for_revision
-    const checkedFiles = files.filter(f => annotatedFileUrls.has(f.url));
+    const checkedFiles = files.filter(f => annotatedFileUrls.has(canonicalize(f.url)));
     if (checkedFiles.length === 0) {
       toast({ title: "No annotated files", description: "Annotate at least one file before requesting revision.", variant: "destructive" });
       return;
@@ -705,7 +707,7 @@ export default function SubmissionsPage({
       // Build file_revision_status: annotated = 'for_revision', others = 'approved'
       const fileRevStatus: Record<string, string> = {};
       files.forEach(f => {
-        fileRevStatus[f.url] = annotatedFileUrls.has(f.url) ? 'for_revision' : 'approved';
+        fileRevStatus[f.url] = annotatedFileUrls.has(canonicalize(f.url)) ? 'for_revision' : 'approved';
       });
 
       const { error } = await supabase
@@ -836,9 +838,10 @@ export default function SubmissionsPage({
       if (updateError) throw updateError;
 
       // Clear saved annotations for the old file
+      const oldUrlCanonical = oldUrl.split("?")[0];
       await supabase.from('annotations').delete()
         .eq('submission_id', selectedSubmission.id)
-        .eq('file_url', oldUrl);
+        .in('file_url', oldUrlCanonical === oldUrl ? [oldUrl] : [oldUrl, oldUrlCanonical]);
 
       toast({ title: "Revision Submitted", description: "Your revised file has been uploaded successfully." });
       setRevisionUploadFile(null);
@@ -1374,7 +1377,7 @@ export default function SubmissionsPage({
                     </p>
                     {files.map((file, idx) => {
                       const label = file.name.includes(':') ? file.name.split(':')[0].trim() : file.name;
-                      const hasAnnotations = annotatedFileUrls.has(file.url);
+                      const hasAnnotations = annotatedFileUrls.has(file.url.split("?")[0]);
                       return (
                         <div key={idx} className="p-3 border border-gray-200 rounded-lg flex items-center justify-between gap-3 bg-gray-50 overflow-hidden w-full">
                           <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
@@ -1682,8 +1685,8 @@ export default function SubmissionsPage({
             {/* 🔴 For Revision (annotated) */}
             {selectedSubmission && (() => {
               const files = getFilesFromSubmission(selectedSubmission);
-              const forRevision = files.filter(f => annotatedFileUrls.has(f.url));
-              const approved = files.filter(f => !annotatedFileUrls.has(f.url));
+              const forRevision = files.filter(f => annotatedFileUrls.has(f.url.split("?")[0]));
+              const approved = files.filter(f => !annotatedFileUrls.has(f.url.split("?")[0]));
               return (
                 <div className="space-y-3">
                   {forRevision.length > 0 && (

@@ -1902,9 +1902,10 @@ export default function LSGDashboard() {
 
       if (updateError) throw updateError;
 
+      const oldUrlCanonical = oldUrl.split("?")[0];
       await supabase.from('annotations').delete()
         .eq('submission_id', submissionData.id)
-        .eq('file_url', oldUrl);
+        .in('file_url', oldUrlCanonical === oldUrl ? [oldUrl] : [oldUrl, oldUrlCanonical]);
 
       toast({ title: "Revision Submitted", description: "Your revised file has been uploaded successfully." });
       setRevisionUploadFile(null);
@@ -4759,7 +4760,7 @@ export default function LSGDashboard() {
                                               size="sm"
                                               variant="outline"
                                               className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2"
-                                              onClick={() => { const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason }; setPreviewAnnotation(ann); setIsLogDetailOpen(false); setIsPreviewAnnotationOpen(true); }}
+                                              onClick={() => { const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason }; setPreviewAnnotation(ann); setIsPreviewAnnotationOpen(true); }}
                                             >
                                               <Eye className="h-3 w-3 mr-1" />
                                               View Annotated
