@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format } from "date-fns";
 import { motion } from "framer-motion";
 import {
   Bell,
   Building2,
-  Clock,
   Download,
   Eye,
   EyeOff,
@@ -146,7 +144,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [now, setNow] = useState(() => new Date());
+  const now = new Date();
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
     const stored = localStorage.getItem("osld_theme");
@@ -175,17 +173,12 @@ export default function LoginPage() {
 
   const selectedOrg = watch("organization");
 
-  const greeting = useMemo(() => {
+  const greeting = (() => {
     const hour = now.getHours();
     if (hour < 12) return "Good morning";
     if (hour < 18) return "Good afternoon";
     return "Good evening";
-  }, [now]);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
+  })();
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -322,64 +315,8 @@ export default function LoginPage() {
                 across Caraga State University.
               </CardDescription>
             </div>
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="rounded-full border border-white/30 bg-white/40 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200 dark:border-white/10">
-                {format(now, "EEE, MMM d")}
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/40 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200 dark:border-white/10">
-                <Clock className="h-3.5 w-3.5" />
-                {format(now, "h:mm:ss a")}
-              </div>
-            </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
-            <div className="relative overflow-hidden rounded-xl border border-white/20 bg-gradient-to-br from-[#014421]/10 via-white/40 to-[#D4AF37]/10 p-4 dark:border-white/10 dark:from-[#014421]/20 dark:via-slate-950/30 dark:to-[#D4AF37]/15">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                Portal Snapshot
-              </div>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10">
-                  <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                    Active Organizations
-                  </div>
-                  <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-50">
-                    9
-                  </div>
-                </div>
-                <div className="rounded-lg border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10">
-                  <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                    Pending Items
-                  </div>
-                  <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-50">
-                    3
-                  </div>
-                </div>
-              </div>
-              <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#D4AF37]/15 blur-2xl dark:bg-[#D4AF37]/10" />
-              <div className="pointer-events-none absolute -bottom-24 -left-24 h-52 w-52 rounded-full bg-[#014421]/15 blur-2xl dark:bg-[#014421]/20" />
-            </div>
-
-            <div className="rounded-xl border border-white/20 bg-white/50 p-4 shadow-sm dark:bg-white/5 dark:border-white/10">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
-                Guiding Principle
-              </div>
-              <div className="mt-2 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
-                “Leadership is not about control, but about transparency,
-                accountability, and service.”
-              </div>
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Institutional Governance
-                </div>
-                <div className="rounded-full bg-[#014421]/10 px-2.5 py-1 text-xs font-semibold text-[#014421] dark:bg-[#014421]/20 dark:text-[#D4AF37]">
-                  Verified
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
       </Card>
 
       <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
@@ -432,10 +369,6 @@ export default function LoginPage() {
                 <CardDescription className="text-slate-700 dark:text-slate-300">
                   Important updates and deadlines.
                 </CardDescription>
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/40 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200 dark:border-white/10">
-                <Bell className="h-3.5 w-3.5" />
-                3
               </div>
             </div>
           </CardHeader>
@@ -620,11 +553,6 @@ export default function LoginPage() {
               )}
             </Button>
 
-            <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/40 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200 dark:border-white/10">
-              <Clock className="h-3.5 w-3.5" />
-              {format(now, "h:mm a")}
-            </div>
-
             <Drawer>
               <DrawerTrigger asChild>
                 <Button
@@ -662,10 +590,6 @@ export default function LoginPage() {
                     <CardDescription className="text-slate-700 dark:text-slate-300">
                       {greeting}. Continue to your organization dashboard.
                     </CardDescription>
-                  </div>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#014421]/10 px-3 py-1 text-xs font-semibold text-[#014421] dark:bg-[#014421]/20 dark:text-[#D4AF37]">
-                    <Bell className="h-3.5 w-3.5" />
-                    3
                   </div>
                 </div>
               </CardHeader>
@@ -771,7 +695,7 @@ export default function LoginPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                       <input
                         type="checkbox"
@@ -780,12 +704,6 @@ export default function LoginPage() {
                       />
                       Remember me
                     </label>
-                    <a
-                      href="#"
-                      className="text-sm font-medium text-[#014421] hover:underline dark:text-[#D4AF37]"
-                    >
-                      Forgot Password
-                    </a>
                   </div>
 
                   <Button
@@ -821,10 +739,6 @@ export default function LoginPage() {
             <div className="mb-4 flex items-center justify-between">
               <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 Information Portal
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/40 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200 dark:border-white/10">
-                <Bell className="h-3.5 w-3.5" />
-                Notifications · 3
               </div>
             </div>
             {Portal}
