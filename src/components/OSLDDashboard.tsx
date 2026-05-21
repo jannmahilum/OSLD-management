@@ -2517,14 +2517,14 @@ ${deadlineInfo}`;
                     </td>
                     <td className="px-2 py-2 text-xs text-gray-500">
                       {{
-                        "OSLD": "OSLD",
-                        "AO": "AO",
-                        "LSG": "LSG",
-                        "GSC": "GSC",
-                        "LCO": "LCO",
-                        "USG": "USG",
-                        "TGP": "TGP",
-                        "USED": "USED"
+                        "OSLD": "Office of Student Leadership and Development",
+                        "AO": "Accredited Organizations",
+                        "LSG": "Local Student Government",
+                        "GSC": "Graduating Student Council",
+                        "LCO": "League of Campus Organization",
+                        "USG": "University Student Government",
+                        "TGP": "The Gold Panicles",
+                        "USED": "University Student Enterprise Development"
                       }[log.organization] || log.organization}
                     </td>
                      <td className="px-2 py-2">
@@ -2718,11 +2718,21 @@ ${deadlineInfo}`;
     // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
+      const orgDisplayName = ({
+        "OSLD": "Office of Student Leadership and Development",
+        "AO": "Accredited Organizations",
+        "LSG": "Local Student Government",
+        "GSC": "Graduating Student Council",
+        "LCO": "League of Campus Organization",
+        "USG": "University Student Government",
+        "TGP": "The Gold Panicles",
+        "USED": "University Student Enterprise Development"
+      }[log.organization] || log.organization).toLowerCase();
       return (
         log.documentName.toLowerCase().includes(searchLower) ||
         log.type.toLowerCase().includes(searchLower) ||
         log.status.toLowerCase().includes(searchLower) ||
-        log.organization.toLowerCase().includes(searchLower)
+        orgDisplayName.includes(searchLower)
       );
     }
     
@@ -2838,39 +2848,18 @@ ${deadlineInfo}`;
           </div>
 
           {/* Filter Controls */}
-          <FilterControls />
+          {FilterControls()}
 
           {/* Tabs for different submission types */}
           <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-4">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="all">All Submissions</TabsTrigger>
-              <TabsTrigger value="rtc">Request to Conduct</TabsTrigger>
-              <TabsTrigger value="ar-lr">AR/LR Reports</TabsTrigger>
-              <TabsTrigger value="loa">Letters of Appeal</TabsTrigger>
               <TabsTrigger value="stats">Statistics</TabsTrigger>
             </TabsList>
 
             <TabsContent value="all">
               <Card className="p-6">
                 <LogsTable logs={filteredLogs} />
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="rtc">
-              <Card className="p-6">
-                <LogsTable logs={filteredLogs.filter(log => log.type === 'Request to Conduct Activity')} />
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="ar-lr">
-              <Card className="p-6">
-                <LogsTable logs={filteredLogs.filter(log => log.type === 'Accomplishment Report' || log.type === 'Liquidation Report')} />
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="loa">
-              <Card className="p-6">
-                <LogsTable logs={filteredLogs.filter(log => log.type === 'Letter of Appeal')} />
               </Card>
             </TabsContent>
 
@@ -2928,7 +2917,16 @@ ${deadlineInfo}`;
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {["AO", "LSG", "GSC", "LCO", "USG", "TGP", "USED", "OSLD"].map(org => (
                       <div key={org} className="p-4 bg-gray-50 rounded-lg border">
-                        <p className="text-xs font-medium text-gray-600">{org}</p>
+                        <p className="text-xs font-medium text-gray-600">{{
+                          "OSLD": "Office of Student Leadership and Development",
+                          "AO": "Accredited Organizations",
+                          "LSG": "Local Student Government",
+                          "GSC": "Graduating Student Council",
+                          "LCO": "League of Campus Organization",
+                          "USG": "University Student Government",
+                          "TGP": "The Gold Panicles",
+                          "USED": "University Student Enterprise Development"
+                        }[org] || org}</p>
                         <p className="text-2xl font-bold text-gray-900 mt-1">
                           {activityLogs.filter(log => log.organization === org).length}
                         </p>

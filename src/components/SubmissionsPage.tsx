@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import FileAnnotationViewer from "./FileAnnotationViewer";
-import { Menu, LogOut, FileText, Calendar, MapPin, Users, DollarSign, Target, Sparkles, Eye, X, Clock, Building2, CheckCircle, AlertTriangle, MoreHorizontal, Pen, Upload } from "lucide-react";
+import { Menu, LogOut, FileText, Calendar, MapPin, Users, DollarSign, Target, Sparkles, Eye, X, Clock, Building2, CheckCircle, AlertTriangle, MoreHorizontal, Pen, Upload, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import {
@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 
 interface SubmissionsPageProps {
   activeNav: string;
@@ -100,6 +101,9 @@ export default function SubmissionsPage({
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [revisionReason, setRevisionReason] = useState("");
   const [rejectComment, setRejectComment] = useState("");
+  const [isDeleteSubmissionDialogOpen, setIsDeleteSubmissionDialogOpen] = useState(false);
+  const [submissionToDelete, setSubmissionToDelete] = useState<Submission | null>(null);
+  const [isDeletingSubmission, setIsDeletingSubmission] = useState(false);
 
   // File-level revision state
   const [isFileRevisionModalOpen, setIsFileRevisionModalOpen] = useState(false);
@@ -1091,8 +1095,81 @@ export default function SubmissionsPage({
     });
   };
 
+  const getStoragePathFromPublicUrl = (url: string) => {
+    const marker = "/storage/v1/object/public/submissions/";
+    const idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    const rest = url.slice(idx + marker.length);
+    const path = rest.split("?")[0];
+    return decodeURIComponent(path);
+  };
+
+  const getSubmissionStoragePaths = (submission: Submission) => {
+    const urls = (submission.file_urls || submission.file_url || "")
+      .split(" | ")
+      .map((u) => u.trim())
+      .filter(Boolean);
+    return urls
+      .map((u) => getStoragePathFromPublicUrl(u))
+      .filter((p): p is string => !!p);
+  };
+
+  const openDeleteSubmissionDialog = (submission: Submission) => {
+    setSubmissionToDelete(submission);
+    setIsDeleteSubmissionDialogOpen(true);
+  };
+
+  const handleDeleteSubmission = async () => {
+    if (!submissionToDelete) return;
+    setIsDeletingSubmission(true);
+    try {
+      const paths = getSubmissionStoragePaths(submissionToDelete);
+      if (paths.length > 0) {
+        const { error: storageError } = await supabase.storage.from("submissions").remove(paths);
+        if (storageError) throw storageError;
+      }
+
+      const { error } = await supabase
+        .from("submissions")
+        .update({ status: "Deleted (Previously Approved)" })
+        .eq("id", submissionToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Deleted",
+        description: "Submission deleted successfully.",
+      });
+      loadSubmissions();
+      onActivityChange?.();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to delete submission.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingSubmission(false);
+    }
+  };
+
   const renderDialogs = () => (
     <div>
+      <DeleteConfirmationDialog
+        open={isDeleteSubmissionDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteSubmissionDialogOpen(open);
+          if (!open) {
+            setSubmissionToDelete(null);
+          }
+        }}
+        title="Delete Submission"
+        description="Are you sure you want to delete this submission and its uploaded file(s)?"
+        itemName={submissionToDelete?.file_name || submissionToDelete?.activity_title}
+        onConfirm={handleDeleteSubmission}
+        isLoading={isDeletingSubmission}
+        isDangerous={true}
+      />
       {/* Submission Detail Dialog */}
       <Dialog open={isDetailDialogOpen} onOpenChange={(open) => {
           setIsDetailDialogOpen(open);
@@ -2403,12 +2480,12 @@ export default function SubmissionsPage({
                             </SelectContent>
                           </Select>
                           <Button
-                            onClick={() => openViewDialog(submission)}
+                            onClick={() => openDeleteSubmissionDialog(submission)}
                             variant="outline"
                             size="sm"
-                            className="border-[#003b27] text-[#003b27] hover:bg-[#003b27] hover:text-white"
+                            className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
