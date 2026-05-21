@@ -1215,7 +1215,7 @@ export default function OSLDDashboard() {
     }
     const { data, error } = await supabase
       .from("annotations")
-      .select("submission_id,file_url")
+      .select("submission_id,file_url,data")
       .in("submission_id", ids);
     if (error) {
       setActivityLogAnnotatedKeys(new Set());
@@ -1223,6 +1223,8 @@ export default function OSLDDashboard() {
     }
     const keys = new Set<string>();
     (data || []).forEach((row: any) => {
+      const annotations = row?.data;
+      if (!Array.isArray(annotations) || annotations.length === 0) return;
       if (!row.submission_id || !row.file_url) return;
       keys.add(`${row.submission_id}|${row.file_url}`);
       keys.add(`${row.submission_id}|${canonicalizeUrl(row.file_url)}`);
@@ -1232,28 +1234,26 @@ export default function OSLDDashboard() {
 
   const openActivityDetails = async (activityTitle: string, organization: string, baseLog: any) => {
     try {
-      const { data: allSubmissions } = await supabase
-        .from("submissions")
-        .select("*")
-        .eq("activity_title", activityTitle)
-        .eq("organization", organization);
-
+      const focusSubmissionType = baseLog?.type || baseLog?.submission_type;
       const groupedData: any = {
         ...baseLog,
         isGroupedView: true,
-        allSubmissions: allSubmissions || [],
+        focusSubmissionType,
+        allSubmissions: [baseLog].filter(Boolean),
+        rtcData: null,
+        accomplishmentData: null,
+        liquidationData: null,
+        loaData: null,
       };
 
-      (allSubmissions || []).forEach((sub: any) => {
-        if (sub.submission_type === "Request to Conduct Activity") groupedData.rtcData = sub;
-        else if (sub.submission_type === "Accomplishment Report") groupedData.accomplishmentData = sub;
-        else if (sub.submission_type === "Liquidation Report") groupedData.liquidationData = sub;
-        else if (sub.submission_type === "Letter of Appeal") groupedData.loaData = sub;
-      });
+      if (focusSubmissionType === "Request to Conduct Activity") groupedData.rtcData = baseLog;
+      else if (focusSubmissionType === "Accomplishment Report") groupedData.accomplishmentData = baseLog;
+      else if (focusSubmissionType === "Liquidation Report") groupedData.liquidationData = baseLog;
+      else if (focusSubmissionType === "Letter of Appeal") groupedData.loaData = baseLog;
 
       setSelectedActivityLog(groupedData);
       setIsActivityLogDetailOpen(true);
-      await loadActivityLogAnnotatedKeys(allSubmissions || []);
+      await loadActivityLogAnnotatedKeys([baseLog].filter(Boolean));
     } catch (error) {
       setSelectedActivityLog(null);
       setIsActivityLogDetailOpen(false);
@@ -2670,7 +2670,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.rtc.organization, docs.rtc)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2689,7 +2689,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.accomplishment.organization, docs.accomplishment)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2708,7 +2708,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.liquidation.organization, docs.liquidation)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2727,7 +2727,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.loa.organization, docs.loa)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -3023,7 +3023,7 @@ ${deadlineInfo}`;
           }
         }}
       >
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-black border-0 shadow-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white text-black border-0 shadow-lg">
           <DialogHeader className="text-black border-b border-gray-200 pb-4 mb-4">
             <DialogTitle className="text-2xl font-bold text-black" style={{ color: "#003b27" }}>
               Activity Details
@@ -3060,6 +3060,10 @@ ${deadlineInfo}`;
                     { data: selectedActivityLog.liquidationData, title: "Liquidation Report", label: "💰" },
                     { data: selectedActivityLog.loaData, title: "Letter of Appeal", label: "✉️" },
                   ]
+                    .filter((x) => {
+                      const focus = selectedActivityLog.focusSubmissionType;
+                      return !focus || x.data?.submission_type === focus || x.data?.type === focus;
+                    })
                     .filter((x) => x.data && (x.data.status === "For Revision" || x.data.revision_reason || x.data.revisionReason))
                     .map((x) => (
                       (x.data.status === "For Revision" && (x.data.revisionReason || x.data.revision_reason)) ? (
@@ -3162,6 +3166,31 @@ ${deadlineInfo}`;
                   if (!subData) return null;
                   const files = buildFiles(subData);
                   if (files.length === 0) return null;
+
+                  const isForRevision = subData.status === "For Revision";
+                  const frs: Record<string, string> = subData.file_revision_status || {};
+                  const hasFrs = Object.keys(frs).length > 0;
+                  const isFileForRevision = (url: string) => {
+                    const key = canonicalizeUrl(url);
+                    return frs[url] === "for_revision" || frs[key] === "for_revision";
+                  };
+
+                  const forRevisionFiles = isForRevision
+                    ? files.filter((f: { name: string; url: string }) => !hasFrs || isFileForRevision(f.url))
+                    : [];
+                  const approvedFiles = isForRevision
+                    ? files.filter((f: { name: string; url: string }) => hasFrs && !isFileForRevision(f.url))
+                    : files;
+
+                  const hasAnnotation = (submissionId: any, url: string) => {
+                    const sid = String(submissionId ?? "");
+                    if (!sid) return false;
+                    return (
+                      activityLogAnnotatedKeys.has(`${sid}|${url}`) ||
+                      activityLogAnnotatedKeys.has(`${sid}|${canonicalizeUrl(url)}`)
+                    );
+                  };
+
                   return (
                     <div className="p-4 border border-gray-300 rounded-lg hover:shadow-md transition-all duration-200 bg-white">
                       <div className="flex items-center justify-between mb-3">
@@ -3173,24 +3202,130 @@ ${deadlineInfo}`;
                           </span>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        {files.map((file: { name: string; url: string }, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded border border-gray-200">
-                            <span className="text-sm text-gray-700 truncate flex-1" title={file.name}>
-                              {file.name}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-[#003b27] text-[#003b27] hover:bg-[#003b27] hover:text-white text-xs h-7 px-2"
-                              onClick={() => window.open(file.url, "_blank")}
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              View
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+                      {isForRevision ? (
+                        <div className="space-y-3">
+                          {forRevisionFiles.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 px-1">
+                                <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+                                <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
+                                  For Revision ({forRevisionFiles.length})
+                                </span>
+                              </div>
+                              <div className="space-y-2 border border-red-200 rounded-lg bg-red-50 p-2">
+                                {forRevisionFiles.map((file: { name: string; url: string }, idx: number) => {
+                                  const labelPart = file.name.includes(":") ? file.name.split(":")[0].trim() : `File ${idx + 1}`;
+                                  const fileNamePart = file.name.includes(":") ? file.name.split(":").slice(1).join(":").trim() : file.name;
+                                  const isAnnotated = hasAnnotation(subData.id, file.url);
+                                  return (
+                                    <div key={idx} className="rounded-md border border-red-200 bg-white p-2">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                          <div className="text-xs font-medium text-red-700">{labelPart}:</div>
+                                          <div className="text-xs text-gray-700 whitespace-normal break-words">{fileNamePart}</div>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row gap-1.5 shrink-0">
+                                          {isAnnotated && (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2"
+                                              onClick={() => {
+                                                const ann = {
+                                                  url: file.url,
+                                                  name: file.name,
+                                                  submissionId: String(subData.id),
+                                                  revisionReason: subData.revision_reason || subData.revisionReason,
+                                                };
+                                                setPreviewAnnotation(ann);
+                                                setIsActivityLogDetailOpen(false);
+                                                setIsPreviewAnnotationOpen(true);
+                                              }}
+                                            >
+                                              <Eye className="h-3 w-3 mr-1" />
+                                              View Annotated
+                                            </Button>
+                                          )}
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="border-[#003b27] text-[#003b27] hover:bg-[#003b27] hover:text-white text-xs h-7 px-2"
+                                            onClick={() => window.open(file.url, "_blank")}
+                                          >
+                                            <Eye className="h-3 w-3 mr-1" />
+                                            View
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                          {approvedFiles.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 px-1">
+                                <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                <span className="text-xs font-bold text-green-600 uppercase tracking-wide">
+                                  Approved ({approvedFiles.length})
+                                </span>
+                              </div>
+                              <div className="space-y-2 border border-green-200 rounded-lg bg-green-50 p-2">
+                                {approvedFiles.map((file: { name: string; url: string }, idx: number) => {
+                                  const labelPart = file.name.includes(":") ? file.name.split(":")[0].trim() : `File ${idx + 1}`;
+                                  const fileNamePart = file.name.includes(":") ? file.name.split(":").slice(1).join(":").trim() : file.name;
+                                  return (
+                                    <div key={idx} className="rounded-md border border-green-200 bg-white p-2">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                          <div className="text-xs font-medium text-[#003b27]">{labelPart}:</div>
+                                          <div className="text-xs text-gray-700 whitespace-normal break-words">{fileNamePart}</div>
+                                        </div>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="border-[#003b27] text-[#003b27] hover:bg-[#003b27] hover:text-white text-xs h-7 px-2 shrink-0"
+                                          onClick={() => window.open(file.url, "_blank")}
+                                        >
+                                          <Eye className="h-3 w-3 mr-1" />
+                                          View
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {files.map((file: { name: string; url: string }, idx: number) => {
+                            const labelPart = file.name.includes(":") ? file.name.split(":")[0].trim() : `File ${idx + 1}`;
+                            const fileNamePart = file.name.includes(":") ? file.name.split(":").slice(1).join(":").trim() : file.name;
+                            return (
+                              <div key={idx} className="rounded-md border border-gray-200 bg-gray-50 p-2">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-xs font-medium text-[#003b27]">{labelPart}:</div>
+                                    <div className="text-xs text-gray-700 whitespace-normal break-words">{fileNamePart}</div>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-[#003b27] text-[#003b27] hover:bg-[#003b27] hover:text-white text-xs h-7 px-2 shrink-0"
+                                    onClick={() => window.open(file.url, "_blank")}
+                                  >
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    View
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 };
@@ -3199,18 +3334,52 @@ ${deadlineInfo}`;
                 const ar = selectedActivityLog.accomplishmentData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Accomplishment Report");
                 const lr = selectedActivityLog.liquidationData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Liquidation Report");
                 const loa = selectedActivityLog.loaData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Letter of Appeal");
+                const focus = selectedActivityLog.focusSubmissionType;
 
                 return (
                   <div className="space-y-3">
-                    {renderSubFiles(rtc, "Request to Conduct Activity", "📌")}
-                    {renderSubFiles(ar, "Accomplishment Report", "📄")}
-                    {renderSubFiles(lr, "Liquidation Report", "💰")}
-                    {renderSubFiles(loa, "Letter of Appeal", "✉️")}
+                    {(!focus || focus === "Request to Conduct Activity") && renderSubFiles(rtc, "Request to Conduct Activity", "📌")}
+                    {(!focus || focus === "Accomplishment Report") && renderSubFiles(ar, "Accomplishment Report", "📄")}
+                    {(!focus || focus === "Liquidation Report") && renderSubFiles(lr, "Liquidation Report", "💰")}
+                    {(!focus || focus === "Letter of Appeal") && renderSubFiles(loa, "Letter of Appeal", "✉️")}
                   </div>
                 );
               })()}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isPreviewAnnotationOpen}
+        onOpenChange={(open) => {
+          setIsPreviewAnnotationOpen(open);
+          if (!open) setPreviewAnnotation(null);
+        }}
+      >
+        <DialogContent className="max-w-5xl w-full h-[92vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-4 py-3 border-b shrink-0">
+            <DialogTitle className="text-sm font-medium truncate">
+              {previewAnnotation?.name.includes(":") ? previewAnnotation.name.split(":")[0].trim() : previewAnnotation?.name}
+            </DialogTitle>
+            {previewAnnotation?.revisionReason && (
+              <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 mt-1">
+                <span className="font-semibold">Revision note:</span> {previewAnnotation.revisionReason}
+              </p>
+            )}
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {previewAnnotation && (
+              <FileAnnotationViewer
+                key={`${previewAnnotation.submissionId}-${previewAnnotation.url}`}
+                url={previewAnnotation.url}
+                fileName={previewAnnotation.name}
+                submissionId={previewAnnotation.submissionId}
+                initialAnnotateMode={false}
+                readOnly={true}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
