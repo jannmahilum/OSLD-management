@@ -70,6 +70,7 @@ import AccountsPage from "./AccountsPage";
 import SubmissionsPage from "./SubmissionsPage";
 import CreateAccountPage from "./CreateAccountPage";
 import OrganizationsPage from "./OrganizationsPage";
+import FileAnnotationViewer from "./FileAnnotationViewer";
 import { supabase } from "../lib/supabase";
 import { useToast } from "./ui/use-toast";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
@@ -620,6 +621,12 @@ export default function OSLDDashboard() {
   };
   const [selectedActivityLog, setSelectedActivityLog] = useState<any | null>(null);
   const [isActivityLogDetailOpen, setIsActivityLogDetailOpen] = useState(false);
+  const [isDeleteActivityLogDialogOpen, setIsDeleteActivityLogDialogOpen] = useState(false);
+  const [activityLogToDelete, setActivityLogToDelete] = useState<{ activityTitle: string; organization: string } | null>(null);
+  const [isDeletingActivityLog, setIsDeletingActivityLog] = useState(false);
+  const [activityLogAnnotatedKeys, setActivityLogAnnotatedKeys] = useState<Set<string>>(new Set());
+  const [previewAnnotation, setPreviewAnnotation] = useState<{ url: string; name: string; submissionId: string; revisionReason?: string } | null>(null);
+  const [isPreviewAnnotationOpen, setIsPreviewAnnotationOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string>("");
   const [logFilterType, setLogFilterType] = useState("all");
   const [logFilterAction, setLogFilterAction] = useState("all");
@@ -1129,6 +1136,130 @@ export default function OSLDDashboard() {
     setNotificationMessage(message);
     setShowNotification(true);
     setTimeout(() => setShowNotification(false), 3000);
+  };
+
+  const getStoragePathFromPublicUrl = (url: string) => {
+    const marker = "/storage/v1/object/public/submissions/";
+    const idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    const rest = url.slice(idx + marker.length);
+    const path = rest.split("?")[0];
+    return decodeURIComponent(path);
+  };
+
+  const getStoragePathsFromSubmission = (submission: any) => {
+    const urls = (submission.file_urls || submission.file_url || "")
+      .split(" | ")
+      .map((u: string) => u.trim())
+      .filter(Boolean);
+    return urls
+      .map((u: string) => getStoragePathFromPublicUrl(u))
+      .filter((p: string | null): p is string => !!p);
+  };
+
+  const openDeleteActivityLogDialog = (activityTitle: string, organization: string) => {
+    setActivityLogToDelete({ activityTitle, organization });
+    setIsDeleteActivityLogDialogOpen(true);
+  };
+
+  const handleDeleteActivityLog = async () => {
+    if (!activityLogToDelete) return;
+    setIsDeletingActivityLog(true);
+    try {
+      const { data: submissionsToDelete, error: fetchError } = await supabase
+        .from("submissions")
+        .select("id, file_url, file_urls")
+        .eq("activity_title", activityLogToDelete.activityTitle)
+        .eq("organization", activityLogToDelete.organization);
+
+      if (fetchError) throw fetchError;
+
+      const storagePaths = Array.from(
+        new Set((submissionsToDelete || []).flatMap((s: any) => getStoragePathsFromSubmission(s)))
+      );
+
+      if (storagePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from("submissions")
+          .remove(storagePaths);
+        if (storageError) throw storageError;
+      }
+
+      const ids = (submissionsToDelete || []).map((s: any) => s.id).filter(Boolean);
+      if (ids.length > 0) {
+        const { error: updateError } = await supabase
+          .from("submissions")
+          .update({ status: "Deleted (Previously Approved)" })
+          .in("id", ids);
+        if (updateError) throw updateError;
+      }
+
+      await fetchActivityLogs();
+      showNotif("Activity log deleted successfully");
+    } catch (error: any) {
+      showNotif(error?.message || "Failed to delete activity log");
+    } finally {
+      setIsDeletingActivityLog(false);
+      setIsDeleteActivityLogDialogOpen(false);
+      setActivityLogToDelete(null);
+    }
+  };
+
+  const canonicalizeUrl = (url: string) => url.split("?")[0];
+
+  const loadActivityLogAnnotatedKeys = async (submissions: any[]) => {
+    const ids = submissions.map((s) => s.id).filter(Boolean);
+    if (ids.length === 0) {
+      setActivityLogAnnotatedKeys(new Set());
+      return;
+    }
+    const { data, error } = await supabase
+      .from("annotations")
+      .select("submission_id,file_url")
+      .in("submission_id", ids);
+    if (error) {
+      setActivityLogAnnotatedKeys(new Set());
+      return;
+    }
+    const keys = new Set<string>();
+    (data || []).forEach((row: any) => {
+      if (!row.submission_id || !row.file_url) return;
+      keys.add(`${row.submission_id}|${row.file_url}`);
+      keys.add(`${row.submission_id}|${canonicalizeUrl(row.file_url)}`);
+    });
+    setActivityLogAnnotatedKeys(keys);
+  };
+
+  const openActivityDetails = async (activityTitle: string, organization: string, baseLog: any) => {
+    try {
+      const { data: allSubmissions } = await supabase
+        .from("submissions")
+        .select("*")
+        .eq("activity_title", activityTitle)
+        .eq("organization", organization);
+
+      const groupedData: any = {
+        ...baseLog,
+        isGroupedView: true,
+        allSubmissions: allSubmissions || [],
+      };
+
+      (allSubmissions || []).forEach((sub: any) => {
+        if (sub.submission_type === "Request to Conduct Activity") groupedData.rtcData = sub;
+        else if (sub.submission_type === "Accomplishment Report") groupedData.accomplishmentData = sub;
+        else if (sub.submission_type === "Liquidation Report") groupedData.liquidationData = sub;
+        else if (sub.submission_type === "Letter of Appeal") groupedData.loaData = sub;
+      });
+
+      setSelectedActivityLog(groupedData);
+      setIsActivityLogDetailOpen(true);
+      await loadActivityLogAnnotatedKeys(allSubmissions || []);
+    } catch (error) {
+      setSelectedActivityLog(null);
+      setIsActivityLogDetailOpen(false);
+      setActivityLogAnnotatedKeys(new Set());
+      showNotif("Failed to load activity details");
+    }
   };
 
   const getDaysInMonth = (date: Date) => {
@@ -2517,14 +2648,14 @@ ${deadlineInfo}`;
                     </td>
                     <td className="px-2 py-2 text-xs text-gray-500">
                       {{
-                        "OSLD": "OSLD",
-                        "AO": "AO",
-                        "LSG": "LSG",
-                        "GSC": "GSC",
-                        "LCO": "LCO",
-                        "USG": "USG",
-                        "TGP": "TGP",
-                        "USED": "USED"
+                        "OSLD": "Office of Student Leadership and Development",
+                        "AO": "Accredited Organizations",
+                        "LSG": "Local Student Government",
+                        "GSC": "Graduating Student Council",
+                        "LCO": "League of Campus Organization",
+                        "USG": "University Student Government",
+                        "TGP": "The Gold Panicles",
+                        "USED": "University Student Enterprise Development"
                       }[log.organization] || log.organization}
                     </td>
                      <td className="px-2 py-2">
@@ -2539,18 +2670,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={async () => {
-                               const { data: allSubmissions } = await supabase.from('submissions').select('*').eq('activity_title', activityTitle).eq('organization', log.organization);
-                               const groupedData: any = { ...log, isGroupedView: true, allSubmissions: allSubmissions || [] };
-                               allSubmissions?.forEach(sub => {
-                                 if (sub.submission_type === 'Request to Conduct Activity') groupedData.rtcData = sub;
-                                 else if (sub.submission_type === 'Accomplishment Report') groupedData.accomplishmentData = sub;
-                                 else if (sub.submission_type === 'Liquidation Report') groupedData.liquidationData = sub;
-                                 else if (sub.submission_type === 'Letter of Appeal') groupedData.loaData = sub;
-                               });
-                               setSelectedActivityLog(groupedData);
-                               setIsActivityLogDetailOpen(true);
-                             }}
+                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2569,18 +2689,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={async () => {
-                               const { data: allSubmissions } = await supabase.from('submissions').select('*').eq('activity_title', activityTitle).eq('organization', log.organization);
-                               const groupedData: any = { ...log, isGroupedView: true, allSubmissions: allSubmissions || [] };
-                               allSubmissions?.forEach(sub => {
-                                 if (sub.submission_type === 'Request to Conduct Activity') groupedData.rtcData = sub;
-                                 else if (sub.submission_type === 'Accomplishment Report') groupedData.accomplishmentData = sub;
-                                 else if (sub.submission_type === 'Liquidation Report') groupedData.liquidationData = sub;
-                                 else if (sub.submission_type === 'Letter of Appeal') groupedData.loaData = sub;
-                               });
-                               setSelectedActivityLog(groupedData);
-                               setIsActivityLogDetailOpen(true);
-                             }}
+                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2599,18 +2708,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={async () => {
-                               const { data: allSubmissions } = await supabase.from('submissions').select('*').eq('activity_title', activityTitle).eq('organization', log.organization);
-                               const groupedData: any = { ...log, isGroupedView: true, allSubmissions: allSubmissions || [] };
-                               allSubmissions?.forEach(sub => {
-                                 if (sub.submission_type === 'Request to Conduct Activity') groupedData.rtcData = sub;
-                                 else if (sub.submission_type === 'Accomplishment Report') groupedData.accomplishmentData = sub;
-                                 else if (sub.submission_type === 'Liquidation Report') groupedData.liquidationData = sub;
-                                 else if (sub.submission_type === 'Letter of Appeal') groupedData.loaData = sub;
-                               });
-                               setSelectedActivityLog(groupedData);
-                               setIsActivityLogDetailOpen(true);
-                             }}
+                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2629,18 +2727,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={async () => {
-                               const { data: allSubmissions } = await supabase.from('submissions').select('*').eq('activity_title', activityTitle).eq('organization', log.organization);
-                               const groupedData: any = { ...log, isGroupedView: true, allSubmissions: allSubmissions || [] };
-                               allSubmissions?.forEach(sub => {
-                                 if (sub.submission_type === 'Request to Conduct Activity') groupedData.rtcData = sub;
-                                 else if (sub.submission_type === 'Accomplishment Report') groupedData.accomplishmentData = sub;
-                                 else if (sub.submission_type === 'Liquidation Report') groupedData.liquidationData = sub;
-                                 else if (sub.submission_type === 'Letter of Appeal') groupedData.loaData = sub;
-                               });
-                               setSelectedActivityLog(groupedData);
-                               setIsActivityLogDetailOpen(true);
-                             }}
+                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2650,42 +2737,13 @@ ${deadlineInfo}`;
                     <td className="px-2 py-2 text-[10px] text-gray-500">{log.date}</td>
                     <td className="px-2 py-2">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-6 px-2 text-[10px]"
-                        onClick={async () => {
-                          // Fetch all submissions for this document
-                          const { data: allSubmissions } = await supabase
-                            .from('submissions')
-                            .select('*')
-                            .eq('activity_title', activityTitle)
-                            .eq('organization', log.organization);
-                          
-                          const groupedData: any = {
-                            ...log,
-                            isGroupedView: true,
-                            allSubmissions: allSubmissions || []
-                          };
-                          
-                          // Group by type
-                          allSubmissions?.forEach(sub => {
-                            if (sub.submission_type === 'Request to Conduct Activity') {
-                              groupedData.rtcData = sub;
-                            } else if (sub.submission_type === 'Accomplishment Report') {
-                              groupedData.accomplishmentData = sub;
-                            } else if (sub.submission_type === 'Liquidation Report') {
-                              groupedData.liquidationData = sub;
-                            } else if (sub.submission_type === 'Letter of Appeal') {
-                              groupedData.loaData = sub;
-                            }
-                          });
-                          
-                          setSelectedActivityLog(groupedData);
-                          setIsActivityLogDetailOpen(true);
-                        }}
+                        className="h-6 px-2 text-[10px] border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+                        onClick={() => openDeleteActivityLogDialog(activityTitle, log.organization)}
                       >
-                        <Eye className="h-3 w-3 mr-0.5" />
-                        View
+                        <Trash2 className="h-3 w-3 mr-0.5" />
+                        Delete
                       </Button>
                     </td>
                   </tr>
@@ -2718,11 +2776,21 @@ ${deadlineInfo}`;
     // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
+      const orgDisplayName = ({
+        "OSLD": "Office of Student Leadership and Development",
+        "AO": "Accredited Organizations",
+        "LSG": "Local Student Government",
+        "GSC": "Graduating Student Council",
+        "LCO": "League of Campus Organization",
+        "USG": "University Student Government",
+        "TGP": "The Gold Panicles",
+        "USED": "University Student Enterprise Development"
+      }[log.organization] || log.organization).toLowerCase();
       return (
         log.documentName.toLowerCase().includes(searchLower) ||
         log.type.toLowerCase().includes(searchLower) ||
         log.status.toLowerCase().includes(searchLower) ||
-        log.organization.toLowerCase().includes(searchLower)
+        orgDisplayName.includes(searchLower)
       );
     }
     
@@ -2838,39 +2906,18 @@ ${deadlineInfo}`;
           </div>
 
           {/* Filter Controls */}
-          <FilterControls />
+          {FilterControls()}
 
           {/* Tabs for different submission types */}
           <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-4">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="all">All Submissions</TabsTrigger>
-              <TabsTrigger value="rtc">Request to Conduct</TabsTrigger>
-              <TabsTrigger value="ar-lr">AR/LR Reports</TabsTrigger>
-              <TabsTrigger value="loa">Letters of Appeal</TabsTrigger>
               <TabsTrigger value="stats">Statistics</TabsTrigger>
             </TabsList>
 
             <TabsContent value="all">
               <Card className="p-6">
                 <LogsTable logs={filteredLogs} />
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="rtc">
-              <Card className="p-6">
-                <LogsTable logs={filteredLogs.filter(log => log.type === 'Request to Conduct Activity')} />
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="ar-lr">
-              <Card className="p-6">
-                <LogsTable logs={filteredLogs.filter(log => log.type === 'Accomplishment Report' || log.type === 'Liquidation Report')} />
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="loa">
-              <Card className="p-6">
-                <LogsTable logs={filteredLogs.filter(log => log.type === 'Letter of Appeal')} />
               </Card>
             </TabsContent>
 
@@ -2928,7 +2975,16 @@ ${deadlineInfo}`;
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {["AO", "LSG", "GSC", "LCO", "USG", "TGP", "USED", "OSLD"].map(org => (
                       <div key={org} className="p-4 bg-gray-50 rounded-lg border">
-                        <p className="text-xs font-medium text-gray-600">{org}</p>
+                        <p className="text-xs font-medium text-gray-600">{{
+                          "OSLD": "Office of Student Leadership and Development",
+                          "AO": "Accredited Organizations",
+                          "LSG": "Local Student Government",
+                          "GSC": "Graduating Student Council",
+                          "LCO": "League of Campus Organization",
+                          "USG": "University Student Government",
+                          "TGP": "The Gold Panicles",
+                          "USED": "University Student Enterprise Development"
+                        }[org] || org}</p>
                         <p className="text-2xl font-bold text-gray-900 mt-1">
                           {activityLogs.filter(log => log.organization === org).length}
                         </p>
@@ -2941,6 +2997,222 @@ ${deadlineInfo}`;
           </Tabs>
         </div>
       </div>
+
+      <DeleteConfirmationDialog
+        open={isDeleteActivityLogDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteActivityLogDialogOpen(open);
+          if (!open) {
+            setActivityLogToDelete(null);
+          }
+        }}
+        title="Delete Activity Log"
+        description="Are you sure you want to delete this row and its uploaded file(s)?"
+        itemName={activityLogToDelete?.activityTitle}
+        onConfirm={handleDeleteActivityLog}
+        isLoading={isDeletingActivityLog}
+        isDangerous={true}
+      />
+
+      <Dialog
+        open={isActivityLogDetailOpen}
+        onOpenChange={(open) => {
+          setIsActivityLogDetailOpen(open);
+          if (!open) {
+            setSelectedActivityLog(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-black border-0 shadow-lg">
+          <DialogHeader className="text-black border-b border-gray-200 pb-4 mb-4">
+            <DialogTitle className="text-2xl font-bold text-black" style={{ color: "#003b27" }}>
+              Activity Details
+            </DialogTitle>
+          </DialogHeader>
+          {!selectedActivityLog ? (
+            <div className="py-8 text-center text-gray-500 font-medium">
+              Loading activity details...
+            </div>
+          ) : (
+            <div className="space-y-5 py-2 text-black">
+              <div className="p-3 bg-gradient-to-r from-green-50 to-transparent rounded-lg border border-green-100">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Activity Name</p>
+                <p className="text-lg font-semibold text-gray-900 mt-1">{selectedActivityLog.documentName}</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {({
+                    "OSLD": "Office of Student Leadership and Development",
+                    "AO": "Accredited Organizations",
+                    "LSG": "Local Student Government",
+                    "GSC": "Graduating Student Council",
+                    "LCO": "League of Campus Organization",
+                    "USG": "University Student Government",
+                    "TGP": "The Gold Panicles",
+                    "USED": "University Student Enterprise Development"
+                  } as any)[selectedActivityLog.organization] || selectedActivityLog.organization}
+                </p>
+              </div>
+
+              {selectedActivityLog.isGroupedView && (
+                <div className="space-y-3">
+                  {[
+                    { data: selectedActivityLog.rtcData, title: "Request to Conduct Activity", label: "📌" },
+                    { data: selectedActivityLog.accomplishmentData, title: "Accomplishment Report", label: "📄" },
+                    { data: selectedActivityLog.liquidationData, title: "Liquidation Report", label: "💰" },
+                    { data: selectedActivityLog.loaData, title: "Letter of Appeal", label: "✉️" },
+                  ]
+                    .filter((x) => x.data && (x.data.status === "For Revision" || x.data.revision_reason || x.data.revisionReason))
+                    .map((x) => (
+                      (x.data.status === "For Revision" && (x.data.revisionReason || x.data.revision_reason)) ? (
+                        <div key={x.title} className="p-4 bg-gradient-to-br from-orange-50 to-orange-25 border border-orange-200 rounded-lg shadow-sm">
+                          <p className="text-orange-900 font-semibold mb-2 flex items-center gap-2">
+                            <span className="text-lg">{x.label}</span> {x.title} - Revision Required
+                          </p>
+                          <div className="mt-2 p-3 bg-white border border-orange-100 rounded">
+                            <p className="text-gray-800 text-sm">{x.data.revisionReason || x.data.revision_reason}</p>
+                          </div>
+                        </div>
+                      ) : null
+                    ))}
+                </div>
+              )}
+
+              {!selectedActivityLog.isGroupedView && selectedActivityLog.status === "For Revision" && (selectedActivityLog.revisionReason || selectedActivityLog.revision_reason) && (
+                <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-25 border border-orange-200 rounded-lg shadow-sm">
+                  <p className="text-orange-900 font-semibold mb-2 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Revision Required
+                  </p>
+                  <div className="mt-2 p-3 bg-white border border-orange-100 rounded">
+                    <p className="text-gray-800 text-sm">{selectedActivityLog.revisionReason || selectedActivityLog.revision_reason}</p>
+                  </div>
+                </div>
+              )}
+
+              {(selectedActivityLog.coaOpinion || selectedActivityLog.coa_opinion || selectedActivityLog.coaComment || selectedActivityLog.coa_comment) && (
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-25 border border-blue-200 rounded-lg shadow-sm">
+                  <p className="text-blue-900 font-semibold mb-3 flex items-center gap-2">
+                    <span className="text-lg">💭</span> COA's Remarks
+                  </p>
+                  {(selectedActivityLog.coaOpinion || selectedActivityLog.coa_opinion) && (
+                    <p className="text-gray-700 text-sm mb-2">
+                      <span className="font-semibold text-gray-900">Opinion:</span>{" "}
+                      <span className="text-gray-700">{selectedActivityLog.coaOpinion || selectedActivityLog.coa_opinion}</span>
+                    </p>
+                  )}
+                  {(selectedActivityLog.coaComment || selectedActivityLog.coa_comment) && (
+                    <p className="text-gray-700 text-sm">
+                      <span className="font-semibold text-gray-900">Comment:</span>{" "}
+                      <span className="text-gray-700">{selectedActivityLog.coaComment || selectedActivityLog.coa_comment}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {selectedActivityLog.activity_duration && (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Activity Information</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Duration</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_duration}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Venue</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_venue}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Participants</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_participants}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Source of Funds</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">₱{selectedActivityLog.activity_funds}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Budget</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">₱{selectedActivityLog.activity_budget}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">SDG</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_sdg}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200 col-span-2">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">LIKHA Agenda</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_likha}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(() => {
+                const splitParts = (value?: string | null) =>
+                  (value || "")
+                    .split("|")
+                    .map((p) => p.trim())
+                    .filter(Boolean);
+
+                const buildFiles = (sub: any) => {
+                  const fileNames = splitParts(sub?.fileName || sub?.file_name);
+                  const fileUrls = splitParts(sub?.file_urls || sub?.fileUrl || sub?.file_url);
+                  const count = Math.min(fileNames.length, fileUrls.length);
+                  return Array.from({ length: count }, (_, i) => ({ name: fileNames[i], url: fileUrls[i] }));
+                };
+
+                const renderSubFiles = (subData: any, fileType: string, emoji: string) => {
+                  if (!subData) return null;
+                  const files = buildFiles(subData);
+                  if (files.length === 0) return null;
+                  return (
+                    <div className="p-4 border border-gray-300 rounded-lg hover:shadow-md transition-all duration-200 bg-white">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{emoji}</span>
+                          <p className="font-semibold text-gray-900">{fileType}</p>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(subData.status)}`}>
+                            {subData.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {files.map((file: { name: string; url: string }, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                            <span className="text-sm text-gray-700 truncate flex-1" title={file.name}>
+                              {file.name}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-[#003b27] text-[#003b27] hover:bg-[#003b27] hover:text-white text-xs h-7 px-2"
+                              onClick={() => window.open(file.url, "_blank")}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                };
+
+                const rtc = selectedActivityLog.rtcData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Request to Conduct Activity");
+                const ar = selectedActivityLog.accomplishmentData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Accomplishment Report");
+                const lr = selectedActivityLog.liquidationData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Liquidation Report");
+                const loa = selectedActivityLog.loaData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Letter of Appeal");
+
+                return (
+                  <div className="space-y-3">
+                    {renderSubFiles(rtc, "Request to Conduct Activity", "📌")}
+                    {renderSubFiles(ar, "Accomplishment Report", "📄")}
+                    {renderSubFiles(lr, "Liquidation Report", "💰")}
+                    {renderSubFiles(loa, "Letter of Appeal", "✉️")}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Logout Confirmation Dialog */}
       <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
