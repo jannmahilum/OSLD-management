@@ -6368,9 +6368,22 @@ export default function LSGDashboard() {
       <Dialog open={isPreviewAnnotationOpen} onOpenChange={(open) => { setIsPreviewAnnotationOpen(open); if (!open) setPreviewAnnotation(null); }}>
         <DialogContent className="max-w-5xl w-full h-[92vh] flex flex-col p-0 gap-0">
           <DialogHeader className="px-4 py-3 border-b shrink-0">
-            <DialogTitle className="text-sm font-medium truncate">
-              {previewAnnotation?.name.includes(':') ? previewAnnotation.name.split(':')[0].trim() : previewAnnotation?.name}
-            </DialogTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setIsPreviewAnnotationOpen(false);
+                  setIsLogDetailOpen(true);
+                }}
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back
+              </Button>
+              <DialogTitle className="text-sm font-medium truncate">
+                {previewAnnotation?.name.includes(':') ? previewAnnotation.name.split(':')[0].trim() : previewAnnotation?.name}
+              </DialogTitle>
+            </div>
             {previewAnnotation?.revisionReason && (
               <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 mt-1">
                 <span className="font-semibold">Revision note:</span> {previewAnnotation.revisionReason}

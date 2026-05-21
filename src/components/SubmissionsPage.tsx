@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import FileAnnotationViewer from "./FileAnnotationViewer";
-import { Menu, LogOut, FileText, Calendar, MapPin, Users, DollarSign, Target, Sparkles, Eye, X, Clock, Building2, CheckCircle, AlertTriangle, MoreHorizontal, Pen, Upload, Trash2 } from "lucide-react";
+import { Menu, LogOut, FileText, Calendar, MapPin, Users, DollarSign, Target, Sparkles, Eye, X, Clock, Building2, CheckCircle, AlertTriangle, MoreHorizontal, Pen, Upload, Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import {
@@ -1680,9 +1680,23 @@ export default function SubmissionsPage({
         <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
           <DialogContent className="max-w-5xl w-full h-[92vh] flex flex-col p-0 gap-0">
             <DialogHeader className="px-4 py-3 border-b flex-row items-center justify-between shrink-0">
-              <DialogTitle className="text-base font-semibold text-[#003b27] truncate pr-4">
-                {previewFile.name.includes(':') ? previewFile.name.split(':')[0].trim() : previewFile.name}
-              </DialogTitle>
+              <div className="flex items-center gap-2 min-w-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 border-[#003b27] text-[#003b27] hover:bg-[#003b27]/10"
+                  onClick={() => {
+                    setPreviewFile(null);
+                    setIsDetailDialogOpen(true);
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Back
+                </Button>
+                <DialogTitle className="text-base font-semibold text-[#003b27] truncate pr-4">
+                  {previewFile.name.includes(':') ? previewFile.name.split(':')[0].trim() : previewFile.name}
+                </DialogTitle>
+              </div>
               <div className="flex items-center gap-2 shrink-0">
                 <a
                   href={previewFile.url}
