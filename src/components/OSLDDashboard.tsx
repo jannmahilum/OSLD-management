@@ -70,6 +70,7 @@ import AccountsPage from "./AccountsPage";
 import SubmissionsPage from "./SubmissionsPage";
 import CreateAccountPage from "./CreateAccountPage";
 import OrganizationsPage from "./OrganizationsPage";
+import FileAnnotationViewer from "./FileAnnotationViewer";
 import { supabase } from "../lib/supabase";
 import { useToast } from "./ui/use-toast";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
@@ -623,6 +624,9 @@ export default function OSLDDashboard() {
   const [isDeleteActivityLogDialogOpen, setIsDeleteActivityLogDialogOpen] = useState(false);
   const [activityLogToDelete, setActivityLogToDelete] = useState<{ activityTitle: string; organization: string } | null>(null);
   const [isDeletingActivityLog, setIsDeletingActivityLog] = useState(false);
+  const [activityLogAnnotatedKeys, setActivityLogAnnotatedKeys] = useState<Set<string>>(new Set());
+  const [previewAnnotation, setPreviewAnnotation] = useState<{ url: string; name: string; submissionId: string; revisionReason?: string } | null>(null);
+  const [isPreviewAnnotationOpen, setIsPreviewAnnotationOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string>("");
   const [logFilterType, setLogFilterType] = useState("all");
   const [logFilterAction, setLogFilterAction] = useState("all");
@@ -1198,6 +1202,63 @@ export default function OSLDDashboard() {
       setIsDeletingActivityLog(false);
       setIsDeleteActivityLogDialogOpen(false);
       setActivityLogToDelete(null);
+    }
+  };
+
+  const canonicalizeUrl = (url: string) => url.split("?")[0];
+
+  const loadActivityLogAnnotatedKeys = async (submissions: any[]) => {
+    const ids = submissions.map((s) => s.id).filter(Boolean);
+    if (ids.length === 0) {
+      setActivityLogAnnotatedKeys(new Set());
+      return;
+    }
+    const { data, error } = await supabase
+      .from("annotations")
+      .select("submission_id,file_url")
+      .in("submission_id", ids);
+    if (error) {
+      setActivityLogAnnotatedKeys(new Set());
+      return;
+    }
+    const keys = new Set<string>();
+    (data || []).forEach((row: any) => {
+      if (!row.submission_id || !row.file_url) return;
+      keys.add(`${row.submission_id}|${row.file_url}`);
+      keys.add(`${row.submission_id}|${canonicalizeUrl(row.file_url)}`);
+    });
+    setActivityLogAnnotatedKeys(keys);
+  };
+
+  const openActivityDetails = async (activityTitle: string, organization: string, baseLog: any) => {
+    try {
+      const { data: allSubmissions } = await supabase
+        .from("submissions")
+        .select("*")
+        .eq("activity_title", activityTitle)
+        .eq("organization", organization);
+
+      const groupedData: any = {
+        ...baseLog,
+        isGroupedView: true,
+        allSubmissions: allSubmissions || [],
+      };
+
+      (allSubmissions || []).forEach((sub: any) => {
+        if (sub.submission_type === "Request to Conduct Activity") groupedData.rtcData = sub;
+        else if (sub.submission_type === "Accomplishment Report") groupedData.accomplishmentData = sub;
+        else if (sub.submission_type === "Liquidation Report") groupedData.liquidationData = sub;
+        else if (sub.submission_type === "Letter of Appeal") groupedData.loaData = sub;
+      });
+
+      setSelectedActivityLog(groupedData);
+      setIsActivityLogDetailOpen(true);
+      await loadActivityLogAnnotatedKeys(allSubmissions || []);
+    } catch (error) {
+      setSelectedActivityLog(null);
+      setIsActivityLogDetailOpen(false);
+      setActivityLogAnnotatedKeys(new Set());
+      showNotif("Failed to load activity details");
     }
   };
 
@@ -2609,18 +2670,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={async () => {
-                               const { data: allSubmissions } = await supabase.from('submissions').select('*').eq('activity_title', activityTitle).eq('organization', log.organization);
-                               const groupedData: any = { ...log, isGroupedView: true, allSubmissions: allSubmissions || [] };
-                               allSubmissions?.forEach(sub => {
-                                 if (sub.submission_type === 'Request to Conduct Activity') groupedData.rtcData = sub;
-                                 else if (sub.submission_type === 'Accomplishment Report') groupedData.accomplishmentData = sub;
-                                 else if (sub.submission_type === 'Liquidation Report') groupedData.liquidationData = sub;
-                                 else if (sub.submission_type === 'Letter of Appeal') groupedData.loaData = sub;
-                               });
-                               setSelectedActivityLog(groupedData);
-                               setIsActivityLogDetailOpen(true);
-                             }}
+                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2639,18 +2689,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={async () => {
-                               const { data: allSubmissions } = await supabase.from('submissions').select('*').eq('activity_title', activityTitle).eq('organization', log.organization);
-                               const groupedData: any = { ...log, isGroupedView: true, allSubmissions: allSubmissions || [] };
-                               allSubmissions?.forEach(sub => {
-                                 if (sub.submission_type === 'Request to Conduct Activity') groupedData.rtcData = sub;
-                                 else if (sub.submission_type === 'Accomplishment Report') groupedData.accomplishmentData = sub;
-                                 else if (sub.submission_type === 'Liquidation Report') groupedData.liquidationData = sub;
-                                 else if (sub.submission_type === 'Letter of Appeal') groupedData.loaData = sub;
-                               });
-                               setSelectedActivityLog(groupedData);
-                               setIsActivityLogDetailOpen(true);
-                             }}
+                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2669,18 +2708,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={async () => {
-                               const { data: allSubmissions } = await supabase.from('submissions').select('*').eq('activity_title', activityTitle).eq('organization', log.organization);
-                               const groupedData: any = { ...log, isGroupedView: true, allSubmissions: allSubmissions || [] };
-                               allSubmissions?.forEach(sub => {
-                                 if (sub.submission_type === 'Request to Conduct Activity') groupedData.rtcData = sub;
-                                 else if (sub.submission_type === 'Accomplishment Report') groupedData.accomplishmentData = sub;
-                                 else if (sub.submission_type === 'Liquidation Report') groupedData.liquidationData = sub;
-                                 else if (sub.submission_type === 'Letter of Appeal') groupedData.loaData = sub;
-                               });
-                               setSelectedActivityLog(groupedData);
-                               setIsActivityLogDetailOpen(true);
-                             }}
+                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2699,18 +2727,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={async () => {
-                               const { data: allSubmissions } = await supabase.from('submissions').select('*').eq('activity_title', activityTitle).eq('organization', log.organization);
-                               const groupedData: any = { ...log, isGroupedView: true, allSubmissions: allSubmissions || [] };
-                               allSubmissions?.forEach(sub => {
-                                 if (sub.submission_type === 'Request to Conduct Activity') groupedData.rtcData = sub;
-                                 else if (sub.submission_type === 'Accomplishment Report') groupedData.accomplishmentData = sub;
-                                 else if (sub.submission_type === 'Liquidation Report') groupedData.liquidationData = sub;
-                                 else if (sub.submission_type === 'Letter of Appeal') groupedData.loaData = sub;
-                               });
-                               setSelectedActivityLog(groupedData);
-                               setIsActivityLogDetailOpen(true);
-                             }}
+                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
