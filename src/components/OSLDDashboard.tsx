@@ -3162,9 +3162,33 @@ ${deadlineInfo}`;
                   return Array.from({ length: count }, (_, i) => ({ name: fileNames[i], url: fileUrls[i] }));
                 };
 
+                const normalizeLabel = (value: string) =>
+                  (value || "").toUpperCase().replace(/\s+/g, " ").trim();
+
+                const getAllowedFileLabels = (submissionType: string) => {
+                  const key = normalizeLabel(submissionType);
+                  if (key === normalizeLabel("Request to Conduct Activity")) return ["RTC", "RTC FILE"];
+                  if (key === normalizeLabel("Accomplishment Report")) return ["AR", "AR FILE"];
+                  if (key === normalizeLabel("Liquidation Report")) return ["LR", "LR FILE"];
+                  if (key === normalizeLabel("Letter of Appeal")) return ["LOA", "LOA FILE"];
+                  return [];
+                };
+
+                const filterFilesForType = (files: Array<{ name: string; url: string }>, submissionType: string) => {
+                  const allowed = getAllowedFileLabels(submissionType).map(normalizeLabel);
+                  if (allowed.length === 0) return files;
+                  const hasLabels = files.some((f) => f.name.includes(":"));
+                  if (!hasLabels) return files;
+                  return files.filter((f) => {
+                    const labelPart = f.name.includes(":") ? f.name.split(":")[0].trim() : "";
+                    const normalized = normalizeLabel(labelPart);
+                    return allowed.some((a) => normalized === a || normalized.startsWith(a));
+                  });
+                };
+
                 const renderSubFiles = (subData: any, fileType: string, emoji: string) => {
                   if (!subData) return null;
-                  const files = buildFiles(subData);
+                  const files = filterFilesForType(buildFiles(subData), fileType);
                   if (files.length === 0) return null;
 
                   const isForRevision = subData.status === "For Revision";
