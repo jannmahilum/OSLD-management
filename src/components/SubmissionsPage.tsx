@@ -65,6 +65,7 @@ interface Submission {
   status: string;
   revision_reason?: string;
   submitted_at: string;
+  submitted_to?: string;
   event_id?: string;
   coa_opinion?: string;
   activity_due_title?: string;
@@ -215,14 +216,32 @@ export default function SubmissionsPage({
       setSubmissions(data || []);
       return;
     } else if (orgShortName === 'OSLD') {
-      const { data, error } = await supabase
-        .from('submissions')
-        .select('*')
-        .eq('submitted_to', 'OSLD')
-        .neq('status', 'Deleted (Previously Approved)')
-        .order('submitted_at', { ascending: false });
-      if (error) { console.error('Error loading submissions:', error); return; }
-      setSubmissions(data || []);
+      const [{ data: osldData, error: osldError }, { data: coaRoutedData, error: coaRoutedError }] = await Promise.all([
+        supabase
+          .from('submissions')
+          .select('*')
+          .eq('submitted_to', 'OSLD')
+          .neq('status', 'Deleted (Previously Approved)'),
+        supabase
+          .from('submissions')
+          .select('*')
+          .eq('submitted_to', 'COA')
+          .in('submission_type', ['Accomplishment Report', 'Liquidation Report', 'Letter of Appeal'])
+          .neq('status', 'Deleted (Previously Approved)'),
+      ]);
+
+      if (osldError || coaRoutedError) {
+        console.error('Error loading submissions:', osldError || coaRoutedError);
+        return;
+      }
+
+      const combined = [...(osldData || []), ...(coaRoutedData || [])].sort((a, b) => {
+        const aTime = new Date(a.submitted_at).getTime();
+        const bTime = new Date(b.submitted_at).getTime();
+        return bTime - aTime;
+      });
+
+      setSubmissions(combined);
       return;
     } else if (orgShortName === 'COA') {
       // COA sees all submissions sent to them for stats, but filters by status in tabs
@@ -1532,7 +1551,7 @@ export default function SubmissionsPage({
             >
               Close
             </Button>
-            {selectedSubmission && selectedSubmission.status === 'Pending' && (
+            {selectedSubmission && selectedSubmission.status === 'Pending' && selectedSubmission.submitted_to === orgShortName && (
               <>
                 {selectedSubmission.submission_type === 'Request to Conduct Activity' && (
                   <>
