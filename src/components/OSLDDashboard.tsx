@@ -3318,6 +3318,15 @@ ${deadlineInfo}`;
                   const approvedFiles = isForRevision
                     ? files.filter((f: { name: string; url: string }) => hasFrs && !isFileForRevision(f.url))
                     : files;
+                  const hasAnyAnnotation = files.some((f: { url: string }) => {
+                    const sid = String(subData?.id ?? "");
+                    if (!sid) return false;
+                    return (
+                      activityLogAnnotatedKeys.has(`${sid}|${f.url}`) ||
+                      activityLogAnnotatedKeys.has(`${sid}|${canonicalizeUrl(f.url)}`)
+                    );
+                  });
+                  const isSubmitterFlow = !hasAnyAnnotation;
 
                   return (
                     <div className="p-4 border border-gray-300 rounded-lg hover:shadow-md transition-all duration-200 bg-white">
@@ -3369,17 +3378,19 @@ ${deadlineInfo}`;
                                             <Eye className="h-3 w-3 mr-1" />
                                             View Annotated
                                           </Button>
-                                          <Button
-                                            size="sm"
-                                            className="bg-[#003b27] hover:bg-[#004d33] text-white text-xs h-7 px-2 w-full sm:w-auto justify-center"
-                                            onClick={() => setRevisionUploadFile({ submissionId: String(subData.id), fileUrl: file.url, fileName: file.name })}
-                                          >
-                                            <Upload className="h-3 w-3 mr-1" />
-                                            Submit Revised
-                                          </Button>
+                                          {isSubmitterFlow && (
+                                            <Button
+                                              size="sm"
+                                              className="bg-[#003b27] hover:bg-[#004d33] text-white text-xs h-7 px-2 w-full sm:w-auto justify-center"
+                                              onClick={() => setRevisionUploadFile({ submissionId: String(subData.id), fileUrl: file.url, fileName: file.name })}
+                                            >
+                                              <Upload className="h-3 w-3 mr-1" />
+                                              Submit Revised
+                                            </Button>
+                                          )}
                                         </div>
                                       </div>
-                                      {isUploadingThis && (
+                                      {isSubmitterFlow && isUploadingThis && (
                                         <div className="space-y-2 border-t border-red-100 pt-2">
                                           <input
                                             type="file"
