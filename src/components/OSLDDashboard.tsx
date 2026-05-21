@@ -1243,6 +1243,7 @@ export default function OSLDDashboard() {
       const groupedData: any = {
         ...baseLog,
         isGroupedView: true,
+        focusSubmissionType: baseLog?.type || baseLog?.submission_type,
         allSubmissions: allSubmissions || [],
       };
 
@@ -2672,7 +2673,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.rtc.organization, docs.rtc)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2691,7 +2692,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.accomplishment.organization, docs.accomplishment)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2710,7 +2711,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.liquidation.organization, docs.liquidation)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2729,7 +2730,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.loa.organization, docs.loa)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -3062,6 +3063,10 @@ ${deadlineInfo}`;
                     { data: selectedActivityLog.liquidationData, title: "Liquidation Report", label: "💰" },
                     { data: selectedActivityLog.loaData, title: "Letter of Appeal", label: "✉️" },
                   ]
+                    .filter((x) => {
+                      const focus = selectedActivityLog.focusSubmissionType;
+                      return !focus || x.data?.submission_type === focus || x.data?.type === focus;
+                    })
                     .filter((x) => x.data && (x.data.status === "For Revision" || x.data.revision_reason || x.data.revisionReason))
                     .map((x) => (
                       (x.data.status === "For Revision" && (x.data.revisionReason || x.data.revision_reason)) ? (
@@ -3332,13 +3337,14 @@ ${deadlineInfo}`;
                 const ar = selectedActivityLog.accomplishmentData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Accomplishment Report");
                 const lr = selectedActivityLog.liquidationData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Liquidation Report");
                 const loa = selectedActivityLog.loaData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Letter of Appeal");
+                const focus = selectedActivityLog.focusSubmissionType;
 
                 return (
                   <div className="space-y-3">
-                    {renderSubFiles(rtc, "Request to Conduct Activity", "📌")}
-                    {renderSubFiles(ar, "Accomplishment Report", "📄")}
-                    {renderSubFiles(lr, "Liquidation Report", "💰")}
-                    {renderSubFiles(loa, "Letter of Appeal", "✉️")}
+                    {(!focus || focus === "Request to Conduct Activity") && renderSubFiles(rtc, "Request to Conduct Activity", "📌")}
+                    {(!focus || focus === "Accomplishment Report") && renderSubFiles(ar, "Accomplishment Report", "📄")}
+                    {(!focus || focus === "Liquidation Report") && renderSubFiles(lr, "Liquidation Report", "💰")}
+                    {(!focus || focus === "Letter of Appeal") && renderSubFiles(loa, "Letter of Appeal", "✉️")}
                   </div>
                 );
               })()}
