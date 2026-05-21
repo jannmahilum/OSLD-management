@@ -3006,19 +3006,22 @@ ${deadlineInfo}`;
           }
         }}
       >
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold" style={{ color: "#003b27" }}>
-              Activity Log Details
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-black border-0 shadow-lg">
+          <DialogHeader className="text-black border-b border-gray-200 pb-4 mb-4">
+            <DialogTitle className="text-2xl font-bold text-black" style={{ color: "#003b27" }}>
+              Activity Details
             </DialogTitle>
           </DialogHeader>
           {!selectedActivityLog ? (
-            <div className="py-10 text-center text-gray-500">Loading...</div>
+            <div className="py-8 text-center text-gray-500 font-medium">
+              Loading activity details...
+            </div>
           ) : (
-            <div className="space-y-4 py-2">
-              <div className="p-4 bg-[#003b27]/5 rounded-lg">
-                <div className="text-lg font-bold text-[#003b27]">{selectedActivityLog.documentName}</div>
-                <div className="text-sm text-gray-600 mt-1">
+            <div className="space-y-5 py-2 text-black">
+              <div className="p-3 bg-gradient-to-r from-green-50 to-transparent rounded-lg border border-green-100">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Activity Name</p>
+                <p className="text-lg font-semibold text-gray-900 mt-1">{selectedActivityLog.documentName}</p>
+                <p className="text-sm text-gray-600 mt-1">
                   {({
                     "OSLD": "Office of Student Leadership and Development",
                     "AO": "Accredited Organizations",
@@ -3029,65 +3032,166 @@ ${deadlineInfo}`;
                     "TGP": "The Gold Panicles",
                     "USED": "University Student Enterprise Development"
                   } as any)[selectedActivityLog.organization] || selectedActivityLog.organization}
-                </div>
+                </p>
               </div>
 
-              <div className="space-y-3">
-                {(selectedActivityLog.allSubmissions || []).length === 0 ? (
-                  <div className="text-sm text-gray-500">No submissions found.</div>
-                ) : (
-                  <div className="overflow-x-auto border rounded-lg">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Files</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {(selectedActivityLog.allSubmissions || []).map((sub: any) => {
-                          const urls = (sub.file_urls || sub.file_url || "").split(" | ").map((u: string) => u.trim()).filter(Boolean);
-                          const names = (sub.file_name || "").split(" | ").map((n: string) => n.trim()).filter(Boolean);
-                          const files = urls.map((u: string, idx: number) => ({
-                            url: u,
-                            name: names[idx] || names[0] || "File"
-                          }));
-                          return (
-                            <tr key={sub.id} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 text-xs text-gray-700">{sub.submission_type}</td>
-                              <td className="px-3 py-2 text-xs text-gray-700">{sub.status}</td>
-                              <td className="px-3 py-2 text-xs">
-                                <div className="flex flex-col gap-1">
-                                  {files.length === 0 ? (
-                                    <span className="text-gray-400">No file</span>
-                                  ) : (
-                                    files.map((f: any) => (
-                                      <button
-                                        key={f.url}
-                                        type="button"
-                                        className="text-left text-blue-600 hover:underline truncate max-w-[480px]"
-                                        title={f.name}
-                                        onClick={() => window.open(f.url, "_blank")}
-                                      >
-                                        {f.name}
-                                      </button>
-                                    ))
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-3 py-2 text-xs text-gray-600">
-                                {sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : ""}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+              {selectedActivityLog.isGroupedView && (
+                <div className="space-y-3">
+                  {[
+                    { data: selectedActivityLog.rtcData, title: "Request to Conduct Activity", label: "📌" },
+                    { data: selectedActivityLog.accomplishmentData, title: "Accomplishment Report", label: "📄" },
+                    { data: selectedActivityLog.liquidationData, title: "Liquidation Report", label: "💰" },
+                    { data: selectedActivityLog.loaData, title: "Letter of Appeal", label: "✉️" },
+                  ]
+                    .filter((x) => x.data && (x.data.status === "For Revision" || x.data.revision_reason || x.data.revisionReason))
+                    .map((x) => (
+                      (x.data.status === "For Revision" && (x.data.revisionReason || x.data.revision_reason)) ? (
+                        <div key={x.title} className="p-4 bg-gradient-to-br from-orange-50 to-orange-25 border border-orange-200 rounded-lg shadow-sm">
+                          <p className="text-orange-900 font-semibold mb-2 flex items-center gap-2">
+                            <span className="text-lg">{x.label}</span> {x.title} - Revision Required
+                          </p>
+                          <div className="mt-2 p-3 bg-white border border-orange-100 rounded">
+                            <p className="text-gray-800 text-sm">{x.data.revisionReason || x.data.revision_reason}</p>
+                          </div>
+                        </div>
+                      ) : null
+                    ))}
+                </div>
+              )}
+
+              {!selectedActivityLog.isGroupedView && selectedActivityLog.status === "For Revision" && (selectedActivityLog.revisionReason || selectedActivityLog.revision_reason) && (
+                <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-25 border border-orange-200 rounded-lg shadow-sm">
+                  <p className="text-orange-900 font-semibold mb-2 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Revision Required
+                  </p>
+                  <div className="mt-2 p-3 bg-white border border-orange-100 rounded">
+                    <p className="text-gray-800 text-sm">{selectedActivityLog.revisionReason || selectedActivityLog.revision_reason}</p>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+
+              {(selectedActivityLog.coaOpinion || selectedActivityLog.coa_opinion || selectedActivityLog.coaComment || selectedActivityLog.coa_comment) && (
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-25 border border-blue-200 rounded-lg shadow-sm">
+                  <p className="text-blue-900 font-semibold mb-3 flex items-center gap-2">
+                    <span className="text-lg">💭</span> COA's Remarks
+                  </p>
+                  {(selectedActivityLog.coaOpinion || selectedActivityLog.coa_opinion) && (
+                    <p className="text-gray-700 text-sm mb-2">
+                      <span className="font-semibold text-gray-900">Opinion:</span>{" "}
+                      <span className="text-gray-700">{selectedActivityLog.coaOpinion || selectedActivityLog.coa_opinion}</span>
+                    </p>
+                  )}
+                  {(selectedActivityLog.coaComment || selectedActivityLog.coa_comment) && (
+                    <p className="text-gray-700 text-sm">
+                      <span className="font-semibold text-gray-900">Comment:</span>{" "}
+                      <span className="text-gray-700">{selectedActivityLog.coaComment || selectedActivityLog.coa_comment}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {selectedActivityLog.activity_duration && (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Activity Information</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Duration</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_duration}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Venue</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_venue}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Participants</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_participants}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Source of Funds</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">₱{selectedActivityLog.activity_funds}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Budget</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">₱{selectedActivityLog.activity_budget}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">SDG</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_sdg}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-gray-200 col-span-2">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">LIKHA Agenda</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_likha}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(() => {
+                const splitParts = (value?: string | null) =>
+                  (value || "")
+                    .split("|")
+                    .map((p) => p.trim())
+                    .filter(Boolean);
+
+                const buildFiles = (sub: any) => {
+                  const fileNames = splitParts(sub?.fileName || sub?.file_name);
+                  const fileUrls = splitParts(sub?.file_urls || sub?.fileUrl || sub?.file_url);
+                  const count = Math.min(fileNames.length, fileUrls.length);
+                  return Array.from({ length: count }, (_, i) => ({ name: fileNames[i], url: fileUrls[i] }));
+                };
+
+                const renderSubFiles = (subData: any, fileType: string, emoji: string) => {
+                  if (!subData) return null;
+                  const files = buildFiles(subData);
+                  if (files.length === 0) return null;
+                  return (
+                    <div className="p-4 border border-gray-300 rounded-lg hover:shadow-md transition-all duration-200 bg-white">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{emoji}</span>
+                          <p className="font-semibold text-gray-900">{fileType}</p>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(subData.status)}`}>
+                            {subData.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {files.map((file: { name: string; url: string }, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                            <span className="text-sm text-gray-700 truncate flex-1" title={file.name}>
+                              {file.name}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-[#003b27] text-[#003b27] hover:bg-[#003b27] hover:text-white text-xs h-7 px-2"
+                              onClick={() => window.open(file.url, "_blank")}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                };
+
+                const rtc = selectedActivityLog.rtcData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Request to Conduct Activity");
+                const ar = selectedActivityLog.accomplishmentData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Accomplishment Report");
+                const lr = selectedActivityLog.liquidationData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Liquidation Report");
+                const loa = selectedActivityLog.loaData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Letter of Appeal");
+
+                return (
+                  <div className="space-y-3">
+                    {renderSubFiles(rtc, "Request to Conduct Activity", "📌")}
+                    {renderSubFiles(ar, "Accomplishment Report", "📄")}
+                    {renderSubFiles(lr, "Liquidation Report", "💰")}
+                    {renderSubFiles(loa, "Letter of Appeal", "✉️")}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </DialogContent>
