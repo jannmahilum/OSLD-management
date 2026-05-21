@@ -1252,7 +1252,7 @@ export default function OSLDDashboard() {
       const groupedData: any = {
         ...baseLog,
         isGroupedView: true,
-        focusSubmissionType: undefined,
+        focusSubmissionType,
         allSubmissions: submissions,
         rtcData: null,
         accomplishmentData: null,
@@ -3200,41 +3200,55 @@ ${deadlineInfo}`;
                 </div>
               )}
 
-              {selectedActivityLog.activity_duration && (
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Activity Information</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Duration</p>
-                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_duration}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Venue</p>
-                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_venue}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Participants</p>
-                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_participants}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Source of Funds</p>
-                      <p className="text-sm font-medium text-gray-900 mt-1">₱{selectedActivityLog.activity_funds}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Budget</p>
-                      <p className="text-sm font-medium text-gray-900 mt-1">₱{selectedActivityLog.activity_budget}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200">
-                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">SDG</p>
-                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_sdg}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded border border-gray-200 col-span-2">
-                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">LIKHA Agenda</p>
-                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedActivityLog.activity_likha}</p>
+              {(() => {
+                const rtc =
+                  selectedActivityLog.rtcData ||
+                  (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Request to Conduct Activity");
+                const src = rtc || selectedActivityLog;
+                const val = (v: any) => {
+                  const s = v === null || v === undefined ? "" : String(v);
+                  return s.trim() ? v : "N/A";
+                };
+                return (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Activity Information</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white p-3 rounded border border-gray-200">
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Duration</p>
+                        <p className="text-sm font-medium text-gray-900 mt-1">{val(src?.activity_duration)}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded border border-gray-200">
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Venue</p>
+                        <p className="text-sm font-medium text-gray-900 mt-1">{val(src?.activity_venue)}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded border border-gray-200">
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Participants</p>
+                        <p className="text-sm font-medium text-gray-900 mt-1">{val(src?.activity_participants)}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded border border-gray-200">
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Source of Funds</p>
+                        <p className="text-sm font-medium text-gray-900 mt-1">
+                          {val(src?.activity_funds) === "N/A" ? "N/A" : `₱${src?.activity_funds}`}
+                        </p>
+                      </div>
+                      <div className="bg-white p-3 rounded border border-gray-200">
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Budget</p>
+                        <p className="text-sm font-medium text-gray-900 mt-1">
+                          {val(src?.activity_budget) === "N/A" ? "N/A" : `₱${src?.activity_budget}`}
+                        </p>
+                      </div>
+                      <div className="bg-white p-3 rounded border border-gray-200">
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">SDG</p>
+                        <p className="text-sm font-medium text-gray-900 mt-1">{val(src?.activity_sdg)}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded border border-gray-200 col-span-2">
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">LIKHA Agenda</p>
+                        <p className="text-sm font-medium text-gray-900 mt-1">{val(src?.activity_likha)}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {(() => {
                 const splitParts = (value?: string | null) =>
@@ -3465,19 +3479,17 @@ ${deadlineInfo}`;
                 const ar = selectedActivityLog.accomplishmentData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Accomplishment Report");
                 const lr = selectedActivityLog.liquidationData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Liquidation Report");
                 const loa = selectedActivityLog.loaData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Letter of Appeal");
-                const hasAnyFile =
-                  rtc?.fileUrl ||
-                  rtc?.file_url ||
-                  ar?.fileUrl ||
-                  ar?.file_url ||
-                  lr?.fileUrl ||
-                  lr?.file_url ||
-                  loa?.fileUrl ||
-                  loa?.file_url ||
-                  rtc?.file_urls ||
-                  ar?.file_urls ||
-                  lr?.file_urls ||
-                  loa?.file_urls;
+                const focus = selectedActivityLog.focusSubmissionType;
+                const visible: any[] = [
+                  ...(rtc ? [{ type: "Request to Conduct Activity", data: rtc, emoji: "📋" }] : []),
+                  ...(ar ? [{ type: "Accomplishment Report", data: ar, emoji: "📝" }] : []),
+                  ...(lr ? [{ type: "Liquidation Report", data: lr, emoji: "💰" }] : []),
+                  ...(loa ? [{ type: "Letter of Appeal", data: loa, emoji: "✉️" }] : []),
+                ].filter((x: any) => !focus || x.type === focus);
+                const hasAnyFile = visible.some((x: any) => {
+                  const d = x.data;
+                  return d?.fileUrl || d?.file_url || d?.file_urls;
+                });
 
                 return (
                   <div className="space-y-3 border-t border-gray-200 pt-4">
@@ -3485,10 +3497,7 @@ ${deadlineInfo}`;
                       <span className="text-lg">📁</span> Submitted Files
                     </h3>
 
-                    {renderSubFiles(rtc, "Request to Conduct Activity", "📋", () => deleteSubmission(rtc))}
-                    {renderSubFiles(ar, "Accomplishment Report", "📝", () => deleteSubmission(ar))}
-                    {renderSubFiles(lr, "Liquidation Report", "💰", () => deleteSubmission(lr))}
-                    {renderSubFiles(loa, "Letter of Appeal", "✉️", () => deleteSubmission(loa))}
+                    {visible.map((x: any) => renderSubFiles(x.data, x.type, x.emoji, () => deleteSubmission(x.data)))}
 
                     {!hasAnyFile && (
                       <div className="p-8 text-center text-gray-400 border border-gray-300 rounded-lg bg-gray-50">
