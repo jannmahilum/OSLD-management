@@ -659,6 +659,43 @@ export default function SubmissionsPage({
           }
         }
 
+        if (
+          orgShortName === 'OSLD' &&
+          selectedSubmission.submitted_to === 'COA' &&
+          (selectedSubmission.submission_type === 'Accomplishment Report' ||
+            selectedSubmission.submission_type === 'Liquidation Report')
+        ) {
+          const { error: endorseError } = await supabase
+            .from('submissions')
+            .update({
+              status: 'Approved',
+              submitted_to: 'COA',
+              endorsed_to_osld: true,
+              approved_by: orgShortName,
+            })
+            .eq('id', selectedSubmission.id);
+
+          if (endorseError) throw endorseError;
+
+          await supabase.from('notifications').insert({
+            event_id: selectedSubmission.id,
+            event_title: `${selectedSubmission.submission_type} Endorsed from ${orgShortName}`,
+            event_description: `${orgShortName} has endorsed a ${selectedSubmission.submission_type} titled "${selectedSubmission.activity_title}" from ${selectedSubmission.organization} to COA for review.`,
+            created_by: orgShortName,
+            target_org: 'COA',
+          });
+
+          toast({
+            title: 'Submission Endorsed',
+            description: `"${selectedSubmission.activity_title}" has been approved and endorsed to COA.`,
+          });
+
+          setIsDetailDialogOpen(false);
+          loadSubmissions();
+          onActivityChange?.();
+          return;
+        }
+
         // COA: Approve and move to Audit Files
         if (orgShortName === 'COA') {
           const { error } = await supabase
@@ -1579,7 +1616,14 @@ export default function SubmissionsPage({
             >
               Close
             </Button>
-            {selectedSubmission && selectedSubmission.status === 'Pending' && selectedSubmission.submitted_to === orgShortName && (
+            {selectedSubmission &&
+              selectedSubmission.status === 'Pending' &&
+              (selectedSubmission.submitted_to === orgShortName ||
+                (orgShortName === 'OSLD' &&
+                  selectedSubmission.submitted_to === 'COA' &&
+                  ['Accomplishment Report', 'Liquidation Report', 'Letter of Appeal'].includes(
+                    selectedSubmission.submission_type
+                  ))) && (
               <>
                 {selectedSubmission.submission_type === 'Request to Conduct Activity' && (
                   <>
