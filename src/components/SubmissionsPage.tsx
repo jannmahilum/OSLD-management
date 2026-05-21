@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import FileAnnotationViewer from "./FileAnnotationViewer";
-import { Menu, LogOut, FileText, Calendar, MapPin, Users, DollarSign, Target, Sparkles, Eye, X, Clock, Building2, CheckCircle, AlertTriangle, MoreHorizontal, Pen, Upload, Trash2 } from "lucide-react";
+import { Menu, LogOut, FileText, Calendar, MapPin, Users, DollarSign, Target, Sparkles, Eye, X, Clock, Building2, CheckCircle, AlertTriangle, MoreHorizontal, Pen, Upload, Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import {
@@ -65,6 +65,7 @@ interface Submission {
   status: string;
   revision_reason?: string;
   submitted_at: string;
+  submitted_to?: string;
   event_id?: string;
   coa_opinion?: string;
   activity_due_title?: string;
@@ -135,29 +136,57 @@ export default function SubmissionsPage({
   });
   const { toast } = useToast();
 
-  // Helper: get all files from a submission as FileItem[]
-  // STRICT 1:1 mapping — no fallback allowed. Each file gets its own URL.
+  const getDefaultFileLabel = useCallback((submissionType: string, index: number) => {
+    if (submissionType === 'Accomplishment Report') {
+      return [
+        'Narrative Report',
+        'Documentation',
+        'Attendance',
+        'Evaluation Report',
+        'Approve Letter to Conduct Activity',
+      ][index];
+    }
+    if (submissionType === 'Liquidation Report') {
+      return [
+        'Liquidation Report Per Event',
+        'Breakdown of Expenses',
+        'DoZE & DSA',
+        'Official Receipt and Needed Fiscal Forms, Procurement Forms',
+        'Others',
+      ][index];
+    }
+    return undefined;
+  }, []);
+
+  const getFileNameFromUrl = useCallback((url: string) => {
+    try {
+      const cleanUrl = url.split('?')[0];
+      const last = cleanUrl.split('/').pop();
+      return last ? decodeURIComponent(last) : '';
+    } catch {
+      return '';
+    }
+  }, []);
+
   const getFilesFromSubmission = useCallback((sub: Submission): FileItem[] => {
     const names = (sub.file_name || '').split(' | ').filter(Boolean);
     const urls = (sub.file_urls || sub.file_url || '').split(' | ').filter(Boolean);
 
-    // Validate alignment
-    if (names.length !== urls.length) {
-      console.warn(
-        `[getFilesFromSubmission] Mismatch for submission ${sub.id}: ` +
-        `${names.length} names vs ${urls.length} URLs. ` +
-        `Only mapping the first ${Math.min(names.length, urls.length)} files.`
-      );
-    }
-
-    // Only build entries where BOTH a name and a URL exist at the same index
-    const count = Math.min(names.length, urls.length);
     const result: FileItem[] = [];
-    for (let i = 0; i < count; i++) {
-      result.push({ name: names[i], url: urls[i] });
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      let name = names[i] || '';
+      if (!name) {
+        const label = getDefaultFileLabel(sub.submission_type, i);
+        const fileFromUrl = getFileNameFromUrl(url);
+        if (label && fileFromUrl) name = `${label}: ${fileFromUrl}`;
+        else if (label) name = label;
+        else name = fileFromUrl || `File ${i + 1}`;
+      }
+      result.push({ name, url });
     }
     return result;
-  }, []);
+  }, [getDefaultFileLabel, getFileNameFromUrl]);
 
   // Check which files have saved annotations in the DB
   const checkAnnotatedFiles = useCallback(async (sub: Submission) => {
@@ -215,7 +244,7 @@ export default function SubmissionsPage({
       setSubmissions(data || []);
       return;
     } else if (orgShortName === 'OSLD') {
-      const [{ data: osldData, error: osldError }, { data: coaRoutedData, error: coaError }] = await Promise.all([
+      const [{ data: osldData, error: osldError }, { data: coaRoutedData, error: coaRoutedError }] = await Promise.all([
         supabase
           .from('submissions')
           .select('*')
@@ -228,14 +257,19 @@ export default function SubmissionsPage({
           .in('submission_type', ['Accomplishment Report', 'Liquidation Report', 'Letter of Appeal'])
           .neq('status', 'Deleted (Previously Approved)'),
       ]);
-      if (osldError || coaError) {
-        console.error('Error loading submissions:', osldError || coaError);
+
+      if (osldError || coaRoutedError) {
+        console.error('Error loading submissions:', osldError || coaRoutedError);
         return;
       }
-      const merged = [...(osldData || []), ...(coaRoutedData || [])];
-      const uniqueById = Array.from(new Map(merged.map((s: any) => [s.id, s])).values());
-      uniqueById.sort((a: any, b: any) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
-      setSubmissions(uniqueById);
+
+      const combined = [...(osldData || []), ...(coaRoutedData || [])].sort((a, b) => {
+        const aTime = new Date(a.submitted_at).getTime();
+        const bTime = new Date(b.submitted_at).getTime();
+        return bTime - aTime;
+      });
+
+      setSubmissions(combined);
       return;
     } else if (orgShortName === 'COA') {
       // COA sees all submissions sent to them for stats, but filters by status in tabs
@@ -623,6 +657,43 @@ export default function SubmissionsPage({
             onActivityChange?.();
             return;
           }
+        }
+
+        if (
+          orgShortName === 'OSLD' &&
+          selectedSubmission.submitted_to === 'COA' &&
+          (selectedSubmission.submission_type === 'Accomplishment Report' ||
+            selectedSubmission.submission_type === 'Liquidation Report')
+        ) {
+          const { error: endorseError } = await supabase
+            .from('submissions')
+            .update({
+              status: 'Approved',
+              submitted_to: 'COA',
+              endorsed_to_osld: true,
+              approved_by: orgShortName,
+            })
+            .eq('id', selectedSubmission.id);
+
+          if (endorseError) throw endorseError;
+
+          await supabase.from('notifications').insert({
+            event_id: selectedSubmission.id,
+            event_title: `${selectedSubmission.submission_type} Endorsed from ${orgShortName}`,
+            event_description: `${orgShortName} has endorsed a ${selectedSubmission.submission_type} titled "${selectedSubmission.activity_title}" from ${selectedSubmission.organization} to COA for review.`,
+            created_by: orgShortName,
+            target_org: 'COA',
+          });
+
+          toast({
+            title: 'Submission Endorsed',
+            description: `"${selectedSubmission.activity_title}" has been approved and endorsed to COA.`,
+          });
+
+          setIsDetailDialogOpen(false);
+          loadSubmissions();
+          onActivityChange?.();
+          return;
         }
 
         // COA: Approve and move to Audit Files
@@ -1547,7 +1618,14 @@ export default function SubmissionsPage({
             >
               Close
             </Button>
-            {selectedSubmission && selectedSubmission.status === 'Pending' && !(orgShortName === 'OSLD' && selectedSubmission.submitted_to === 'COA') && (
+            {selectedSubmission &&
+              selectedSubmission.status === 'Pending' &&
+              (selectedSubmission.submitted_to === orgShortName ||
+                (orgShortName === 'OSLD' &&
+                  selectedSubmission.submitted_to === 'COA' &&
+                  ['Accomplishment Report', 'Liquidation Report', 'Letter of Appeal'].includes(
+                    selectedSubmission.submission_type
+                  ))) && (
               <>
                 {selectedSubmission.submission_type === 'Request to Conduct Activity' && (
                   <>
@@ -1604,9 +1682,23 @@ export default function SubmissionsPage({
         <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
           <DialogContent className="max-w-5xl w-full h-[92vh] flex flex-col p-0 gap-0">
             <DialogHeader className="px-4 py-3 border-b flex-row items-center justify-between shrink-0">
-              <DialogTitle className="text-base font-semibold text-[#003b27] truncate pr-4">
-                {previewFile.name.includes(':') ? previewFile.name.split(':')[0].trim() : previewFile.name}
-              </DialogTitle>
+              <div className="flex items-center gap-2 min-w-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 border-[#003b27] text-[#003b27] hover:bg-[#003b27]/10"
+                  onClick={() => {
+                    setPreviewFile(null);
+                    setIsDetailDialogOpen(true);
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Back
+                </Button>
+                <DialogTitle className="text-base font-semibold text-[#003b27] truncate pr-4">
+                  {previewFile.name.includes(':') ? previewFile.name.split(':')[0].trim() : previewFile.name}
+                </DialogTitle>
+              </div>
               <div className="flex items-center gap-2 shrink-0">
                 <a
                   href={previewFile.url}
