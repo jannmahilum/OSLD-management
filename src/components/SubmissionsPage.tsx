@@ -136,29 +136,57 @@ export default function SubmissionsPage({
   });
   const { toast } = useToast();
 
-  // Helper: get all files from a submission as FileItem[]
-  // STRICT 1:1 mapping — no fallback allowed. Each file gets its own URL.
+  const getDefaultFileLabel = useCallback((submissionType: string, index: number) => {
+    if (submissionType === 'Accomplishment Report') {
+      return [
+        'Narrative Report',
+        'Documentation',
+        'Attendance',
+        'Evaluation Report',
+        'Approve Letter to Conduct Activity',
+      ][index];
+    }
+    if (submissionType === 'Liquidation Report') {
+      return [
+        'Liquidation Report Per Event',
+        'Breakdown of Expenses',
+        'DoZE & DSA',
+        'Official Receipt and Needed Fiscal Forms, Procurement Forms',
+        'Others',
+      ][index];
+    }
+    return undefined;
+  }, []);
+
+  const getFileNameFromUrl = useCallback((url: string) => {
+    try {
+      const cleanUrl = url.split('?')[0];
+      const last = cleanUrl.split('/').pop();
+      return last ? decodeURIComponent(last) : '';
+    } catch {
+      return '';
+    }
+  }, []);
+
   const getFilesFromSubmission = useCallback((sub: Submission): FileItem[] => {
     const names = (sub.file_name || '').split(' | ').filter(Boolean);
     const urls = (sub.file_urls || sub.file_url || '').split(' | ').filter(Boolean);
 
-    // Validate alignment
-    if (names.length !== urls.length) {
-      console.warn(
-        `[getFilesFromSubmission] Mismatch for submission ${sub.id}: ` +
-        `${names.length} names vs ${urls.length} URLs. ` +
-        `Only mapping the first ${Math.min(names.length, urls.length)} files.`
-      );
-    }
-
-    // Only build entries where BOTH a name and a URL exist at the same index
-    const count = Math.min(names.length, urls.length);
     const result: FileItem[] = [];
-    for (let i = 0; i < count; i++) {
-      result.push({ name: names[i], url: urls[i] });
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      let name = names[i] || '';
+      if (!name) {
+        const label = getDefaultFileLabel(sub.submission_type, i);
+        const fileFromUrl = getFileNameFromUrl(url);
+        if (label && fileFromUrl) name = `${label}: ${fileFromUrl}`;
+        else if (label) name = label;
+        else name = fileFromUrl || `File ${i + 1}`;
+      }
+      result.push({ name, url });
     }
     return result;
-  }, []);
+  }, [getDefaultFileLabel, getFileNameFromUrl]);
 
   // Check which files have saved annotations in the DB
   const checkAnnotatedFiles = useCallback(async (sub: Submission) => {
