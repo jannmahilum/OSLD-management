@@ -22,7 +22,7 @@ import {
   DollarSign,
   Target,
   Sparkles,
-  Calendar,
+  Calendar as CalendarIcon,
   FileText,
   Download,
   AlertTriangle,
@@ -57,6 +57,7 @@ import {
   DialogFooter,
 } from "./ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Calendar } from "./ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import {
   Select,
@@ -2639,7 +2640,7 @@ ${deadlineInfo}`;
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" className="h-9 w-[180px] justify-start text-left font-normal">
-            <Calendar className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 h-4 w-4" />
             {logFilterDate ? format(logFilterDate, "PPP") : "Filter by Date"}
           </Button>
         </PopoverTrigger>
@@ -6232,7 +6233,7 @@ ${deadlineInfo}`;
                 <Card className="p-5 shadow-lg border-0 bg-white rounded-xl overflow-hidden">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600">
-                      <Calendar className="h-5 w-5 text-white" />
+                      <CalendarIcon className="h-5 w-5 text-white" />
                     </div>
                     <div>
                       <h4 className="font-bold text-base text-gray-700">Events by Organization</h4>
@@ -6539,7 +6540,7 @@ ${deadlineInfo}`;
                         if (filteredEvents.length === 0) {
                           return (
                             <div className="text-center py-8 text-gray-400">
-                              <Calendar className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                              <CalendarIcon className="h-10 w-10 mx-auto mb-2 opacity-50" />
                               <p className="text-sm">No events match your filters</p>
                             </div>
                           );
