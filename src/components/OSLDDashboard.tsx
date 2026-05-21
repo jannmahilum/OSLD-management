@@ -1235,25 +1235,38 @@ export default function OSLDDashboard() {
   const openActivityDetails = async (activityTitle: string, organization: string, baseLog: any) => {
     try {
       const focusSubmissionType = baseLog?.type || baseLog?.submission_type;
+      const { data: allSubs, error } = await supabase
+        .from("submissions")
+        .select("*")
+        .eq("activity_title", activityTitle)
+        .eq("organization", organization)
+        .neq("status", "Deleted (Previously Approved)")
+        .order("submitted_at", { ascending: false });
+      if (error) throw error;
+
+      const submissions = ((allSubs && allSubs.length > 0 ? allSubs : [baseLog]) || []).filter(Boolean);
       const groupedData: any = {
         ...baseLog,
         isGroupedView: true,
-        focusSubmissionType,
-        allSubmissions: [baseLog].filter(Boolean),
+        focusSubmissionType: undefined,
+        allSubmissions: submissions,
         rtcData: null,
         accomplishmentData: null,
         liquidationData: null,
         loaData: null,
       };
 
-      if (focusSubmissionType === "Request to Conduct Activity") groupedData.rtcData = baseLog;
-      else if (focusSubmissionType === "Accomplishment Report") groupedData.accomplishmentData = baseLog;
-      else if (focusSubmissionType === "Liquidation Report") groupedData.liquidationData = baseLog;
-      else if (focusSubmissionType === "Letter of Appeal") groupedData.loaData = baseLog;
+      submissions.forEach((sub: any) => {
+        const subType = sub?.submission_type || sub?.type;
+        if (subType === "Request to Conduct Activity") groupedData.rtcData = sub;
+        else if (subType === "Accomplishment Report") groupedData.accomplishmentData = sub;
+        else if (subType === "Liquidation Report") groupedData.liquidationData = sub;
+        else if (subType === "Letter of Appeal") groupedData.loaData = sub;
+      });
 
       setSelectedActivityLog(groupedData);
       setIsActivityLogDetailOpen(true);
-      await loadActivityLogAnnotatedKeys([baseLog].filter(Boolean));
+      await loadActivityLogAnnotatedKeys(submissions);
     } catch (error) {
       setSelectedActivityLog(null);
       setIsActivityLogDetailOpen(false);
@@ -3158,6 +3171,21 @@ ${deadlineInfo}`;
                 const buildFiles = (sub: any) => {
                   const fileNames = splitParts(sub?.fileName || sub?.file_name);
                   const fileUrls = splitParts(sub?.file_urls || sub?.fileUrl || sub?.file_url);
+                  const nameFromUrl = (url: string) => {
+                    try {
+                      const parsed = new URL(url);
+                      const base = (parsed.pathname.split("/").pop() || "").trim();
+                      return decodeURIComponent(base) || "File";
+                    } catch {
+                      return "File";
+                    }
+                  };
+
+                  if (fileUrls.length === 0) return [];
+                  if (fileNames.length === 0) {
+                    return fileUrls.map((url: string, i: number) => ({ name: `File ${i + 1}: ${nameFromUrl(url)}`, url }));
+                  }
+
                   const count = Math.min(fileNames.length, fileUrls.length);
                   return Array.from({ length: count }, (_, i) => ({ name: fileNames[i], url: fileUrls[i] }));
                 };
