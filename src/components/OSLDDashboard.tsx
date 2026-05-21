@@ -1234,29 +1234,26 @@ export default function OSLDDashboard() {
 
   const openActivityDetails = async (activityTitle: string, organization: string, baseLog: any) => {
     try {
-      const { data: allSubmissions } = await supabase
-        .from("submissions")
-        .select("*")
-        .eq("activity_title", activityTitle)
-        .eq("organization", organization);
-
+      const focusSubmissionType = baseLog?.type || baseLog?.submission_type;
       const groupedData: any = {
         ...baseLog,
         isGroupedView: true,
-        focusSubmissionType: baseLog?.type || baseLog?.submission_type,
-        allSubmissions: allSubmissions || [],
+        focusSubmissionType,
+        allSubmissions: [baseLog].filter(Boolean),
+        rtcData: null,
+        accomplishmentData: null,
+        liquidationData: null,
+        loaData: null,
       };
 
-      (allSubmissions || []).forEach((sub: any) => {
-        if (sub.submission_type === "Request to Conduct Activity") groupedData.rtcData = sub;
-        else if (sub.submission_type === "Accomplishment Report") groupedData.accomplishmentData = sub;
-        else if (sub.submission_type === "Liquidation Report") groupedData.liquidationData = sub;
-        else if (sub.submission_type === "Letter of Appeal") groupedData.loaData = sub;
-      });
+      if (focusSubmissionType === "Request to Conduct Activity") groupedData.rtcData = baseLog;
+      else if (focusSubmissionType === "Accomplishment Report") groupedData.accomplishmentData = baseLog;
+      else if (focusSubmissionType === "Liquidation Report") groupedData.liquidationData = baseLog;
+      else if (focusSubmissionType === "Letter of Appeal") groupedData.loaData = baseLog;
 
       setSelectedActivityLog(groupedData);
       setIsActivityLogDetailOpen(true);
-      await loadActivityLogAnnotatedKeys(allSubmissions || []);
+      await loadActivityLogAnnotatedKeys([baseLog].filter(Boolean));
     } catch (error) {
       setSelectedActivityLog(null);
       setIsActivityLogDetailOpen(false);
