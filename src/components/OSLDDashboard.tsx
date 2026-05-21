@@ -3175,14 +3175,14 @@ ${deadlineInfo}`;
                       </div>
                       <div className="space-y-2">
                         {files.map((file: { name: string; url: string }, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded border border-gray-200">
-                            <span className="text-sm text-gray-700 truncate flex-1 min-w-0" title={file.name}>
+                          <div key={idx} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                            <span className="text-sm text-gray-700 break-words whitespace-normal min-w-0 flex-1" title={file.name}>
                               {file.name}
                             </span>
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-[#003b27] text-[#003b27] hover:bg-[#003b27] hover:text-white text-xs h-7 px-2"
+                              className="border-[#003b27] text-[#003b27] hover:bg-[#003b27] hover:text-white text-xs h-7 px-2 w-full sm:w-auto justify-center"
                               onClick={() => window.open(file.url, "_blank")}
                             >
                               <Eye className="h-3 w-3 mr-1" />

@@ -4752,7 +4752,7 @@ export default function LSGDashboard() {
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                           <div className="flex items-center gap-2 min-w-0 flex-1">
                                             <span className="text-xs font-medium text-red-700 shrink-0">{labelPart}:</span>
-                                            <span className="text-xs text-gray-600 truncate">{fileNamePart}</span>
+                                            <span className="text-xs text-gray-600 break-words whitespace-normal">{fileNamePart}</span>
                                           </div>
                                           <div className="flex flex-wrap gap-1.5 shrink-0 w-full sm:w-auto sm:justify-end">
                                             <Button
@@ -4819,7 +4819,7 @@ export default function LSGDashboard() {
                                       <div key={idx} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 bg-white rounded-md border border-green-200">
                                         <div className="flex items-center gap-2 min-w-0 flex-1">
                                           <span className="text-xs font-medium text-[#003b27] shrink-0">{labelPart}:</span>
-                                          <span className="text-xs text-gray-600 truncate">{fileNamePart}</span>
+                                          <span className="text-xs text-gray-600 break-words whitespace-normal">{fileNamePart}</span>
                                         </div>
                                         <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto sm:justify-end">
                                           <a href={file.url} target="_blank" rel="noopener noreferrer">
@@ -4848,7 +4848,7 @@ export default function LSGDashboard() {
                                 <div key={idx} className="flex items-center justify-between gap-3 p-2 bg-gray-50 rounded-md border border-gray-200">
                                   <div className="flex items-center gap-2 min-w-0 flex-1">
                                     <span className="text-xs font-medium text-[#003b27] shrink-0">{labelPart}:</span>
-                                    <span className="text-xs text-gray-600 truncate">{fileNamePart}</span>
+                                    <span className="text-xs text-gray-600 break-words whitespace-normal">{fileNamePart}</span>
                                   </div>
                                   <a href={file.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
                                     <Button size="sm" style={{ backgroundColor: "#003b27" }} className="text-xs h-7 px-2">
