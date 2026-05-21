@@ -1215,7 +1215,7 @@ export default function OSLDDashboard() {
     }
     const { data, error } = await supabase
       .from("annotations")
-      .select("submission_id,file_url")
+      .select("submission_id,file_url,data")
       .in("submission_id", ids);
     if (error) {
       setActivityLogAnnotatedKeys(new Set());
@@ -1223,6 +1223,8 @@ export default function OSLDDashboard() {
     }
     const keys = new Set<string>();
     (data || []).forEach((row: any) => {
+      const annotations = row?.data;
+      if (!Array.isArray(annotations) || annotations.length === 0) return;
       if (!row.submission_id || !row.file_url) return;
       keys.add(`${row.submission_id}|${row.file_url}`);
       keys.add(`${row.submission_id}|${canonicalizeUrl(row.file_url)}`);
@@ -1232,28 +1234,26 @@ export default function OSLDDashboard() {
 
   const openActivityDetails = async (activityTitle: string, organization: string, baseLog: any) => {
     try {
-      const { data: allSubmissions } = await supabase
-        .from("submissions")
-        .select("*")
-        .eq("activity_title", activityTitle)
-        .eq("organization", organization);
-
+      const focusSubmissionType = baseLog?.type || baseLog?.submission_type;
       const groupedData: any = {
         ...baseLog,
         isGroupedView: true,
-        allSubmissions: allSubmissions || [],
+        focusSubmissionType,
+        allSubmissions: [baseLog].filter(Boolean),
+        rtcData: null,
+        accomplishmentData: null,
+        liquidationData: null,
+        loaData: null,
       };
 
-      (allSubmissions || []).forEach((sub: any) => {
-        if (sub.submission_type === "Request to Conduct Activity") groupedData.rtcData = sub;
-        else if (sub.submission_type === "Accomplishment Report") groupedData.accomplishmentData = sub;
-        else if (sub.submission_type === "Liquidation Report") groupedData.liquidationData = sub;
-        else if (sub.submission_type === "Letter of Appeal") groupedData.loaData = sub;
-      });
+      if (focusSubmissionType === "Request to Conduct Activity") groupedData.rtcData = baseLog;
+      else if (focusSubmissionType === "Accomplishment Report") groupedData.accomplishmentData = baseLog;
+      else if (focusSubmissionType === "Liquidation Report") groupedData.liquidationData = baseLog;
+      else if (focusSubmissionType === "Letter of Appeal") groupedData.loaData = baseLog;
 
       setSelectedActivityLog(groupedData);
       setIsActivityLogDetailOpen(true);
-      await loadActivityLogAnnotatedKeys(allSubmissions || []);
+      await loadActivityLogAnnotatedKeys([baseLog].filter(Boolean));
     } catch (error) {
       setSelectedActivityLog(null);
       setIsActivityLogDetailOpen(false);
@@ -2670,7 +2670,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.rtc.organization, docs.rtc)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2689,7 +2689,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.accomplishment.organization, docs.accomplishment)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2708,7 +2708,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.liquidation.organization, docs.liquidation)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -2727,7 +2727,7 @@ ${deadlineInfo}`;
                            <Button
                              size="sm"
                              className="text-[10px] h-6 px-2 bg-[#003b27] text-white hover:bg-[#002a1c] mt-0.5"
-                             onClick={() => openActivityDetails(activityTitle, log.organization, log)}
+                            onClick={() => openActivityDetails(activityTitle, docs.loa.organization, docs.loa)}
                            ><Eye className="h-3 w-3 mr-0.5" />View</Button>
                          </div>
                        ) : (
@@ -3060,6 +3060,10 @@ ${deadlineInfo}`;
                     { data: selectedActivityLog.liquidationData, title: "Liquidation Report", label: "💰" },
                     { data: selectedActivityLog.loaData, title: "Letter of Appeal", label: "✉️" },
                   ]
+                    .filter((x) => {
+                      const focus = selectedActivityLog.focusSubmissionType;
+                      return !focus || x.data?.submission_type === focus || x.data?.type === focus;
+                    })
                     .filter((x) => x.data && (x.data.status === "For Revision" || x.data.revision_reason || x.data.revisionReason))
                     .map((x) => (
                       (x.data.status === "For Revision" && (x.data.revisionReason || x.data.revision_reason)) ? (
@@ -3158,10 +3162,59 @@ ${deadlineInfo}`;
                   return Array.from({ length: count }, (_, i) => ({ name: fileNames[i], url: fileUrls[i] }));
                 };
 
+                const normalizeLabel = (value: string) =>
+                  (value || "").toUpperCase().replace(/\s+/g, " ").trim();
+
+                const getAllowedFileLabels = (submissionType: string) => {
+                  const key = normalizeLabel(submissionType);
+                  if (key === normalizeLabel("Request to Conduct Activity")) return ["RTC", "RTC FILE"];
+                  if (key === normalizeLabel("Accomplishment Report")) return ["AR", "AR FILE"];
+                  if (key === normalizeLabel("Liquidation Report")) return ["LR", "LR FILE"];
+                  if (key === normalizeLabel("Letter of Appeal")) return ["LOA", "LOA FILE"];
+                  return [];
+                };
+
+                const filterFilesForType = (files: Array<{ name: string; url: string }>, submissionType: string) => {
+                  const allowed = getAllowedFileLabels(submissionType).map(normalizeLabel);
+                  if (allowed.length === 0) return files;
+                  const hasLabels = files.some((f) => f.name.includes(":"));
+                  if (!hasLabels) return files;
+                  return files.filter((f) => {
+                    const labelPart = f.name.includes(":") ? f.name.split(":")[0].trim() : "";
+                    const normalized = normalizeLabel(labelPart);
+                    return allowed.some((a) => normalized === a || normalized.startsWith(a));
+                  });
+                };
+
                 const renderSubFiles = (subData: any, fileType: string, emoji: string) => {
                   if (!subData) return null;
-                  const files = buildFiles(subData);
+                  const files = filterFilesForType(buildFiles(subData), fileType);
                   if (files.length === 0) return null;
+
+                  const isForRevision = subData.status === "For Revision";
+                  const frs: Record<string, string> = subData.file_revision_status || {};
+                  const hasFrs = Object.keys(frs).length > 0;
+                  const isFileForRevision = (url: string) => {
+                    const key = canonicalizeUrl(url);
+                    return frs[url] === "for_revision" || frs[key] === "for_revision";
+                  };
+
+                  const forRevisionFiles = isForRevision
+                    ? files.filter((f: { name: string; url: string }) => !hasFrs || isFileForRevision(f.url))
+                    : [];
+                  const approvedFiles = isForRevision
+                    ? files.filter((f: { name: string; url: string }) => hasFrs && !isFileForRevision(f.url))
+                    : files;
+
+                  const hasAnnotation = (submissionId: any, url: string) => {
+                    const sid = String(submissionId ?? "");
+                    if (!sid) return false;
+                    return (
+                      activityLogAnnotatedKeys.has(`${sid}|${url}`) ||
+                      activityLogAnnotatedKeys.has(`${sid}|${canonicalizeUrl(url)}`)
+                    );
+                  };
+
                   return (
                     <div className="p-4 border border-gray-300 rounded-lg hover:shadow-md transition-all duration-200 bg-white">
                       <div className="flex items-center justify-between mb-3">
@@ -3199,18 +3252,52 @@ ${deadlineInfo}`;
                 const ar = selectedActivityLog.accomplishmentData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Accomplishment Report");
                 const lr = selectedActivityLog.liquidationData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Liquidation Report");
                 const loa = selectedActivityLog.loaData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Letter of Appeal");
+                const focus = selectedActivityLog.focusSubmissionType;
 
                 return (
                   <div className="space-y-3">
-                    {renderSubFiles(rtc, "Request to Conduct Activity", "📌")}
-                    {renderSubFiles(ar, "Accomplishment Report", "📄")}
-                    {renderSubFiles(lr, "Liquidation Report", "💰")}
-                    {renderSubFiles(loa, "Letter of Appeal", "✉️")}
+                    {(!focus || focus === "Request to Conduct Activity") && renderSubFiles(rtc, "Request to Conduct Activity", "📌")}
+                    {(!focus || focus === "Accomplishment Report") && renderSubFiles(ar, "Accomplishment Report", "📄")}
+                    {(!focus || focus === "Liquidation Report") && renderSubFiles(lr, "Liquidation Report", "💰")}
+                    {(!focus || focus === "Letter of Appeal") && renderSubFiles(loa, "Letter of Appeal", "✉️")}
                   </div>
                 );
               })()}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isPreviewAnnotationOpen}
+        onOpenChange={(open) => {
+          setIsPreviewAnnotationOpen(open);
+          if (!open) setPreviewAnnotation(null);
+        }}
+      >
+        <DialogContent className="max-w-5xl w-full h-[92vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-4 py-3 border-b shrink-0">
+            <DialogTitle className="text-sm font-medium truncate">
+              {previewAnnotation?.name.includes(":") ? previewAnnotation.name.split(":")[0].trim() : previewAnnotation?.name}
+            </DialogTitle>
+            {previewAnnotation?.revisionReason && (
+              <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 mt-1">
+                <span className="font-semibold">Revision note:</span> {previewAnnotation.revisionReason}
+              </p>
+            )}
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {previewAnnotation && (
+              <FileAnnotationViewer
+                key={`${previewAnnotation.submissionId}-${previewAnnotation.url}`}
+                url={previewAnnotation.url}
+                fileName={previewAnnotation.name}
+                submissionId={previewAnnotation.submissionId}
+                initialAnnotateMode={false}
+                readOnly={true}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

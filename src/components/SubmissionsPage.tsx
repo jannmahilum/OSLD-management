@@ -1411,8 +1411,10 @@ export default function SubmissionsPage({
                 const files = getFilesFromSubmission(selectedSubmission);
                 if (files.length === 0) return null;
 
-                const isApprover = ['LCO', 'USG', 'OSLD', 'COA'].includes(orgShortName);
-                const isSubmitter = !isApprover;
+                const isApproverOrg = ['LCO', 'USG', 'OSLD', 'COA'].includes(orgShortName);
+                const isOsldReadOnly = orgShortName === 'OSLD' && selectedSubmission.submitted_to === 'COA';
+                const isApprover = isApproverOrg && !isOsldReadOnly;
+                const isSubmitter = !isApproverOrg;
                 const frs = selectedSubmission.file_revision_status || {};
                 // Files explicitly marked for_revision
                 const forRevisionFiles = files.filter(f => frs[f.url] === 'for_revision');
