@@ -358,6 +358,7 @@ interface OrgAccount {
 export default function OSLDDashboard() {
   const navStorageKey = "osld_activeNav";
   const submissionTabStorageKey = "osld_activeSubmissionTab";
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [events, setEvents] = useState<Event[]>([]);
@@ -627,6 +628,9 @@ export default function OSLDDashboard() {
   const [activityLogAnnotatedKeys, setActivityLogAnnotatedKeys] = useState<Set<string>>(new Set());
   const [previewAnnotation, setPreviewAnnotation] = useState<{ url: string; name: string; submissionId: string; revisionReason?: string } | null>(null);
   const [isPreviewAnnotationOpen, setIsPreviewAnnotationOpen] = useState(false);
+  const [revisionUploadFile, setRevisionUploadFile] = useState<{ submissionId: string; fileUrl: string; fileName: string } | null>(null);
+  const [revisionUploadInput, setRevisionUploadInput] = useState<File | null>(null);
+  const [isUploadingRevision, setIsUploadingRevision] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string>("");
   const [logFilterType, setLogFilterType] = useState("all");
   const [logFilterAction, setLogFilterAction] = useState("all");
@@ -1272,6 +1276,77 @@ export default function OSLDDashboard() {
       setIsActivityLogDetailOpen(false);
       setActivityLogAnnotatedKeys(new Set());
       showNotif("Failed to load activity details");
+    }
+  };
+
+  const handleRevisionFileUpload = async (submissionData: any) => {
+    if (!revisionUploadFile || !revisionUploadInput || !submissionData) return;
+    setIsUploadingRevision(true);
+    try {
+      const file = revisionUploadInput;
+      const filePath = `submissions/${submissionData.organization}/${submissionData.id}/${Date.now()}_${file.name}`;
+
+      const { error: uploadError } = await supabase.storage.from("submissions").upload(filePath, file);
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("submissions").getPublicUrl(filePath);
+      const newFileUrl = urlData.publicUrl;
+
+      const splitParts = (value?: string | null) =>
+        (value || "")
+          .split("|")
+          .map((p) => p.trim())
+          .filter(Boolean);
+
+      const currentFileUrls = splitParts(submissionData.file_urls || submissionData.fileUrl || submissionData.file_url);
+      const currentFileNames = splitParts(submissionData.fileName || submissionData.file_name);
+      const oldUrl = revisionUploadFile.fileUrl;
+      const oldName = revisionUploadFile.fileName;
+
+      const urlIndex = currentFileUrls.indexOf(oldUrl);
+      if (urlIndex === -1) throw new Error("Could not find the file to replace. Please reload and try again.");
+
+      const newFileUrls = [...currentFileUrls];
+      newFileUrls[urlIndex] = newFileUrl;
+
+      const labelPart = oldName.includes(":") ? oldName.split(":")[0].trim() : oldName.split(".")[0];
+      const newFileName = `${labelPart}: ${file.name}`;
+      const newFileNames = [...currentFileNames];
+      const nameIndex = urlIndex < currentFileNames.length ? urlIndex : currentFileNames.indexOf(oldName);
+      if (nameIndex !== -1) newFileNames[nameIndex] = newFileName;
+
+      const currentFRS = submissionData.file_revision_status || {};
+      const newFRS = { ...currentFRS };
+      delete newFRS[oldUrl];
+      delete newFRS[canonicalizeUrl(oldUrl)];
+      newFRS[newFileUrl] = "submitted";
+      newFRS[canonicalizeUrl(newFileUrl)] = "submitted";
+
+      const stillForRevision = Object.values(newFRS).some((v) => v === "for_revision");
+
+      const { error: updateError } = await supabase
+        .from("submissions")
+        .update({
+          file_url: newFileUrls[0] || submissionData.file_url || submissionData.fileUrl,
+          file_urls: newFileUrls.join(" | "),
+          file_name: newFileNames.join(" | "),
+          file_revision_status: newFRS,
+          status: stillForRevision ? "For Revision" : "Pending",
+        })
+        .eq("id", submissionData.id);
+      if (updateError) throw updateError;
+
+      await supabase.from("annotations").delete().eq("submission_id", submissionData.id).eq("file_url", oldUrl);
+
+      toast({ title: "Revision Submitted", description: "Revised file uploaded successfully." });
+      setRevisionUploadFile(null);
+      setRevisionUploadInput(null);
+      setIsActivityLogDetailOpen(false);
+      await fetchActivityLogs();
+    } catch (err: any) {
+      toast({ title: "Upload Failed", description: err?.message || "Failed to upload revised file.", variant: "destructive" });
+    } finally {
+      setIsUploadingRevision(false);
     }
   };
 
@@ -3168,55 +3243,51 @@ ${deadlineInfo}`;
                     .map((p) => p.trim())
                     .filter(Boolean);
 
-                const buildFiles = (sub: any) => {
-                  const fileNames = splitParts(sub?.fileName || sub?.file_name);
-                  const fileUrls = splitParts(sub?.file_urls || sub?.fileUrl || sub?.file_url);
-                  const nameFromUrl = (url: string) => {
-                    try {
-                      const parsed = new URL(url);
-                      const base = (parsed.pathname.split("/").pop() || "").trim();
-                      return decodeURIComponent(base) || "File";
-                    } catch {
-                      return "File";
-                    }
-                  };
+                const nameFromUrl = (url: string) => {
+                  try {
+                    const parsed = new URL(url);
+                    const base = (parsed.pathname.split("/").pop() || "").trim();
+                    return decodeURIComponent(base) || "File";
+                  } catch {
+                    return "File";
+                  }
+                };
 
+                const buildFiles = (subData: any) => {
+                  const fileNames = splitParts(subData?.fileName || subData?.file_name);
+                  const fileUrls = splitParts(subData?.file_urls || subData?.fileUrl || subData?.file_url);
                   if (fileUrls.length === 0) return [];
                   if (fileNames.length === 0) {
                     return fileUrls.map((url: string, i: number) => ({ name: `File ${i + 1}: ${nameFromUrl(url)}`, url }));
                   }
-
                   const count = Math.min(fileNames.length, fileUrls.length);
                   return Array.from({ length: count }, (_, i) => ({ name: fileNames[i], url: fileUrls[i] }));
                 };
 
-                const normalizeLabel = (value: string) =>
-                  (value || "").toUpperCase().replace(/\s+/g, " ").trim();
-
-                const getAllowedFileLabels = (submissionType: string) => {
-                  const key = normalizeLabel(submissionType);
-                  if (key === normalizeLabel("Request to Conduct Activity")) return ["RTC", "RTC FILE"];
-                  if (key === normalizeLabel("Accomplishment Report")) return ["AR", "AR FILE"];
-                  if (key === normalizeLabel("Liquidation Report")) return ["LR", "LR FILE"];
-                  if (key === normalizeLabel("Letter of Appeal")) return ["LOA", "LOA FILE"];
-                  return [];
+                const deleteSubmission = async (subData: any) => {
+                  if (!subData) return;
+                  try {
+                    if (subData.status === "Approved") {
+                      const { error } = await supabase
+                        .from("submissions")
+                        .update({ status: "Deleted (Previously Approved)", file_url: null, file_urls: null, file_name: null, gdrive_link: null })
+                        .eq("id", subData.id);
+                      if (error) throw error;
+                    } else {
+                      const { error } = await supabase.from("submissions").delete().eq("id", subData.id);
+                      if (error) throw error;
+                    }
+                    toast({ title: "Success", description: "File deleted successfully." });
+                    setIsActivityLogDetailOpen(false);
+                    await fetchActivityLogs();
+                  } catch (error) {
+                    toast({ title: "Error", description: "Failed to delete file.", variant: "destructive" });
+                  }
                 };
 
-                const filterFilesForType = (files: Array<{ name: string; url: string }>, submissionType: string) => {
-                  const allowed = getAllowedFileLabels(submissionType).map(normalizeLabel);
-                  if (allowed.length === 0) return files;
-                  const hasLabels = files.some((f) => f.name.includes(":"));
-                  if (!hasLabels) return files;
-                  return files.filter((f) => {
-                    const labelPart = f.name.includes(":") ? f.name.split(":")[0].trim() : "";
-                    const normalized = normalizeLabel(labelPart);
-                    return allowed.some((a) => normalized === a || normalized.startsWith(a));
-                  });
-                };
-
-                const renderSubFiles = (subData: any, fileType: string, emoji: string) => {
+                const renderSubFiles = (subData: any, fileType: string, emoji: string, onDelete: () => void) => {
                   if (!subData) return null;
-                  const files = filterFilesForType(buildFiles(subData), fileType);
+                  const files = buildFiles(subData);
                   if (files.length === 0) return null;
 
                   const isForRevision = subData.status === "For Revision";
@@ -3234,15 +3305,6 @@ ${deadlineInfo}`;
                     ? files.filter((f: { name: string; url: string }) => hasFrs && !isFileForRevision(f.url))
                     : files;
 
-                  const hasAnnotation = (submissionId: any, url: string) => {
-                    const sid = String(submissionId ?? "");
-                    if (!sid) return false;
-                    return (
-                      activityLogAnnotatedKeys.has(`${sid}|${url}`) ||
-                      activityLogAnnotatedKeys.has(`${sid}|${canonicalizeUrl(url)}`)
-                    );
-                  };
-
                   return (
                     <div className="p-4 border border-gray-300 rounded-lg hover:shadow-md transition-all duration-200 bg-white">
                       <div className="flex items-center justify-between mb-3">
@@ -3253,25 +3315,148 @@ ${deadlineInfo}`;
                             {subData.status}
                           </span>
                         </div>
+                        <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={onDelete}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <div className="space-y-2">
-                        {files.map((file: { name: string; url: string }, idx: number) => (
-                          <div key={idx} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 bg-gray-50 rounded border border-gray-200">
-                            <span className="text-sm text-gray-700 break-words whitespace-normal min-w-0 flex-1" title={file.name}>
-                              {file.name}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-[#003b27] text-[#003b27] hover:bg-[#003b27] hover:text-white text-xs h-7 px-2 w-full sm:w-auto justify-center"
-                              onClick={() => window.open(file.url, "_blank")}
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              View
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+
+                      {isForRevision ? (
+                        <div className="space-y-3">
+                          {forRevisionFiles.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 px-1">
+                                <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+                                <span className="text-xs font-bold text-red-600 uppercase tracking-wide">For Revision ({forRevisionFiles.length})</span>
+                              </div>
+                              <div className="space-y-2 border border-red-200 rounded-lg bg-red-50 p-2">
+                                {forRevisionFiles.map((file: { name: string; url: string }, idx: number) => {
+                                  const labelPart = file.name.includes(":") ? file.name.split(":")[0].trim() : `File ${idx + 1}`;
+                                  const fileNamePart = file.name.includes(":") ? file.name.split(":").slice(1).join(":").trim() : file.name;
+                                  const isUploadingThis = revisionUploadFile?.fileUrl === file.url;
+                                  return (
+                                    <div key={idx} className="rounded-md border border-red-200 bg-white p-2 space-y-2">
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                          <span className="text-xs font-medium text-red-700 shrink-0">{labelPart}:</span>
+                                          <span className="text-xs text-gray-600 break-words whitespace-normal">{fileNamePart}</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5 shrink-0 w-full sm:w-auto sm:justify-end">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2 w-full sm:w-auto justify-center"
+                                            onClick={() => {
+                                              const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason };
+                                              setPreviewAnnotation(ann);
+                                              setIsActivityLogDetailOpen(false);
+                                              setIsPreviewAnnotationOpen(true);
+                                            }}
+                                          >
+                                            <Eye className="h-3 w-3 mr-1" />
+                                            View Annotated
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            className="bg-[#003b27] hover:bg-[#004d33] text-white text-xs h-7 px-2 w-full sm:w-auto justify-center"
+                                            onClick={() => setRevisionUploadFile({ submissionId: String(subData.id), fileUrl: file.url, fileName: file.name })}
+                                          >
+                                            <Upload className="h-3 w-3 mr-1" />
+                                            Submit Revised
+                                          </Button>
+                                        </div>
+                                      </div>
+                                      {isUploadingThis && (
+                                        <div className="space-y-2 border-t border-red-100 pt-2">
+                                          <input
+                                            type="file"
+                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                            className="text-xs w-full"
+                                            onChange={(e) => setRevisionUploadInput(e.target.files?.[0] || null)}
+                                          />
+                                          <div className="flex gap-2">
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => {
+                                                setRevisionUploadFile(null);
+                                                setRevisionUploadInput(null);
+                                              }}
+                                            >
+                                              Cancel
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              className="bg-[#003b27] hover:bg-[#004d33] text-white"
+                                              disabled={!revisionUploadInput || isUploadingRevision}
+                                              onClick={() => handleRevisionFileUpload(subData)}
+                                            >
+                                              {isUploadingRevision ? "Uploading..." : "Upload"}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {approvedFiles.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 px-1">
+                                <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                <span className="text-xs font-bold text-green-600 uppercase tracking-wide">Approved ({approvedFiles.length})</span>
+                              </div>
+                              <div className="space-y-1.5 border border-green-200 rounded-lg bg-green-50 p-2">
+                                {approvedFiles.map((file: { name: string; url: string }, idx: number) => {
+                                  const labelPart = file.name.includes(":") ? file.name.split(":")[0].trim() : `File ${idx + 1}`;
+                                  const fileNamePart = file.name.includes(":") ? file.name.split(":").slice(1).join(":").trim() : file.name;
+                                  return (
+                                    <div key={idx} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 bg-white rounded-md border border-green-200">
+                                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        <span className="text-xs font-medium text-[#003b27] shrink-0">{labelPart}:</span>
+                                        <span className="text-xs text-gray-600 break-words whitespace-normal">{fileNamePart}</span>
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto sm:justify-end">
+                                        <a href={file.url} target="_blank" rel="noopener noreferrer">
+                                          <Button size="sm" variant="outline" className="border-[#003b27] text-[#003b27] hover:bg-[#003b27]/10 text-xs h-7 px-2">
+                                            <ExternalLink className="h-3 w-3 mr-1" />
+                                            Open
+                                          </Button>
+                                        </a>
+                                        <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                                          <CheckCircle className="h-3 w-3" /> Approved
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {files.map((file: { name: string; url: string }, idx: number) => {
+                            const labelPart = file.name.includes(":") ? file.name.split(":")[0].trim() : `File ${idx + 1}`;
+                            const fileNamePart = file.name.includes(":") ? file.name.split(":").slice(1).join(":").trim() : file.name;
+                            return (
+                              <div key={idx} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 bg-gray-50 rounded-md border border-gray-200">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className="text-xs font-medium text-[#003b27] shrink-0">{labelPart}:</span>
+                                  <span className="text-xs text-gray-600 break-words whitespace-normal">{fileNamePart}</span>
+                                </div>
+                                <a href={file.url} target="_blank" rel="noopener noreferrer" className="shrink-0 w-full sm:w-auto">
+                                  <Button size="sm" style={{ backgroundColor: "#003b27" }} className="text-white text-xs h-7 px-2 w-full sm:w-auto justify-center">
+                                    Open
+                                  </Button>
+                                </a>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 };
@@ -3280,19 +3465,47 @@ ${deadlineInfo}`;
                 const ar = selectedActivityLog.accomplishmentData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Accomplishment Report");
                 const lr = selectedActivityLog.liquidationData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Liquidation Report");
                 const loa = selectedActivityLog.loaData || (selectedActivityLog.allSubmissions || []).find((s: any) => s.submission_type === "Letter of Appeal");
-                const focus = selectedActivityLog.focusSubmissionType;
+                const hasAnyFile =
+                  rtc?.fileUrl ||
+                  rtc?.file_url ||
+                  ar?.fileUrl ||
+                  ar?.file_url ||
+                  lr?.fileUrl ||
+                  lr?.file_url ||
+                  loa?.fileUrl ||
+                  loa?.file_url ||
+                  rtc?.file_urls ||
+                  ar?.file_urls ||
+                  lr?.file_urls ||
+                  loa?.file_urls;
 
                 return (
-                  <div className="space-y-3">
-                    {(!focus || focus === "Request to Conduct Activity") && renderSubFiles(rtc, "Request to Conduct Activity", "📌")}
-                    {(!focus || focus === "Accomplishment Report") && renderSubFiles(ar, "Accomplishment Report", "📄")}
-                    {(!focus || focus === "Liquidation Report") && renderSubFiles(lr, "Liquidation Report", "💰")}
-                    {(!focus || focus === "Letter of Appeal") && renderSubFiles(loa, "Letter of Appeal", "✉️")}
+                  <div className="space-y-3 border-t border-gray-200 pt-4">
+                    <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide flex items-center gap-2">
+                      <span className="text-lg">📁</span> Submitted Files
+                    </h3>
+
+                    {renderSubFiles(rtc, "Request to Conduct Activity", "📋", () => deleteSubmission(rtc))}
+                    {renderSubFiles(ar, "Accomplishment Report", "📝", () => deleteSubmission(ar))}
+                    {renderSubFiles(lr, "Liquidation Report", "💰", () => deleteSubmission(lr))}
+                    {renderSubFiles(loa, "Letter of Appeal", "✉️", () => deleteSubmission(loa))}
+
+                    {!hasAnyFile && (
+                      <div className="p-8 text-center text-gray-400 border border-gray-300 rounded-lg bg-gray-50">
+                        <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm text-gray-600">No files submitted yet</p>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
             </div>
           )}
+          <DialogFooter className="border-t border-gray-200 pt-4 mt-4">
+            <Button variant="outline" onClick={() => setIsActivityLogDetailOpen(false)} className="border-gray-300 hover:bg-gray-50">
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
