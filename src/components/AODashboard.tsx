@@ -5109,7 +5109,7 @@ function AODashboard({
 
         {/* Activity Log Detail Dialog */}
         <Dialog open={isLogDetailOpen} onOpenChange={setIsLogDetailOpen}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white text-black border-0 shadow-lg">
+          <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white text-black border-0 shadow-lg">
             <DialogHeader className="text-black border-b border-gray-200 pb-4 mb-4">
               <DialogTitle className="text-2xl font-bold text-black" style={{ color: "#003b27" }}>
                 Activity Details
@@ -5285,16 +5285,16 @@ function AODashboard({
                                     const isUploadingThis = revisionUploadFile?.fileUrl === file.url;
                                     return (
                                       <div key={idx} className="rounded-md border border-red-200 bg-white p-2 space-y-2">
-                                        <div className="flex items-center justify-between gap-2">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                           <div className="flex items-center gap-2 min-w-0 flex-1">
                                             <span className="text-xs font-medium text-red-700 shrink-0">{labelPart}:</span>
                                             <span className="text-xs text-gray-600 truncate">{fileNamePart}</span>
                                           </div>
-                                          <div className="flex gap-1.5 shrink-0">
+                                          <div className="flex flex-wrap gap-1.5 shrink-0 w-full sm:w-auto sm:justify-end">
                                             <Button
                                               size="sm"
                                               variant="outline"
-                                              className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2"
+                                              className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2 w-full sm:w-auto justify-center"
                                               onClick={() => { const ann = { url: file.url, name: file.name, submissionId: String(subData.id), revisionReason: subData.revision_reason }; setPreviewAnnotation(ann); setIsLogDetailOpen(false); setIsPreviewAnnotationOpen(true); }}
                                             >
                                               <Eye className="h-3 w-3 mr-1" />
@@ -5302,7 +5302,7 @@ function AODashboard({
                                             </Button>
                                             <Button
                                               size="sm"
-                                              className="bg-[#003b27] hover:bg-[#004d33] text-white text-xs h-7 px-2"
+                                              className="bg-[#003b27] hover:bg-[#004d33] text-white text-xs h-7 px-2 w-full sm:w-auto justify-center"
                                               onClick={() => setRevisionUploadFile({ submissionId: subData.id, fileUrl: file.url, fileName: file.name })}
                                             >
                                               <Upload className="h-3 w-3 mr-1" />
@@ -5350,12 +5350,12 @@ function AODashboard({
                                     const labelPart = file.name.includes(':') ? file.name.split(':')[0].trim() : `File ${idx + 1}`;
                                     const fileNamePart = file.name.includes(':') ? file.name.split(':').slice(1).join(':').trim() : file.name;
                                     return (
-                                      <div key={idx} className="flex items-center justify-between gap-3 p-2 bg-white rounded-md border border-green-200">
+                                      <div key={idx} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 bg-white rounded-md border border-green-200">
                                         <div className="flex items-center gap-2 min-w-0 flex-1">
                                           <span className="text-xs font-medium text-[#003b27] shrink-0">{labelPart}:</span>
                                           <span className="text-xs text-gray-600 truncate">{fileNamePart}</span>
                                         </div>
-                                        <div className="flex items-center gap-2 shrink-0">
+                                        <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto sm:justify-end">
                                           <a href={file.url} target="_blank" rel="noopener noreferrer">
                                             <Button size="sm" variant="outline" className="border-[#003b27] text-[#003b27] hover:bg-[#003b27]/10 text-xs h-7 px-2">
                                               <ExternalLink className="h-3 w-3 mr-1" />
@@ -5379,13 +5379,13 @@ function AODashboard({
                               const labelPart = file.name.includes(':') ? file.name.split(':')[0].trim() : `File ${idx + 1}`;
                               const fileNamePart = file.name.includes(':') ? file.name.split(':').slice(1).join(':').trim() : file.name;
                               return (
-                                <div key={idx} className="flex items-center justify-between gap-3 p-2 bg-gray-50 rounded-md border border-gray-200">
+                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 bg-gray-50 rounded-md border border-gray-200">
                                   <div className="flex items-center gap-2 min-w-0 flex-1">
                                     <span className="text-xs font-medium text-[#003b27] shrink-0">{labelPart}:</span>
                                     <span className="text-xs text-gray-600 truncate">{fileNamePart}</span>
                                   </div>
-                                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                                    <Button size="sm" style={{ backgroundColor: "#003b27" }} className="text-white text-xs h-7 px-2">
+                                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="shrink-0 w-full sm:w-auto">
+                                    <Button size="sm" style={{ backgroundColor: "#003b27" }} className="text-white text-xs h-7 px-2 w-full sm:w-auto justify-center">
                                       Open
                                     </Button>
                                   </a>
