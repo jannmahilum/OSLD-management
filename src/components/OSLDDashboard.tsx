@@ -70,6 +70,7 @@ import AccountsPage from "./AccountsPage";
 import SubmissionsPage from "./SubmissionsPage";
 import CreateAccountPage from "./CreateAccountPage";
 import OrganizationsPage from "./OrganizationsPage";
+import FileAnnotationViewer from "./FileAnnotationViewer";
 import { supabase } from "../lib/supabase";
 import { useToast } from "./ui/use-toast";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
@@ -620,6 +621,8 @@ export default function OSLDDashboard() {
   };
   const [selectedActivityLog, setSelectedActivityLog] = useState<any | null>(null);
   const [isActivityLogDetailOpen, setIsActivityLogDetailOpen] = useState(false);
+  const [previewAnnotation, setPreviewAnnotation] = useState<{ url: string; name: string; submissionId: string; revisionReason?: string | null } | null>(null);
+  const [isPreviewAnnotationOpen, setIsPreviewAnnotationOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string>("");
   const [logFilterType, setLogFilterType] = useState("all");
   const [logFilterAction, setLogFilterAction] = useState("all");
@@ -2729,6 +2732,112 @@ ${deadlineInfo}`;
     return true;
   });
 
+  const splitParts = (value?: string | null) =>
+    (value || "")
+      .split("|")
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+  const getFilesFromSubmission = (subData: any) => {
+    const fileNames = splitParts(subData?.fileName || subData?.file_name);
+    const fileUrls = splitParts(subData?.file_urls || subData?.fileUrl || subData?.file_url);
+    const count = Math.min(fileNames.length, fileUrls.length);
+    return Array.from({ length: count }, (_, i) => ({ name: fileNames[i], url: fileUrls[i] }));
+  };
+
+  const renderSubmissionFiles = (subData: any) => {
+    const files = getFilesFromSubmission(subData);
+    if (files.length === 0) return null;
+
+    const isForRevision = subData?.status === "For Revision";
+    const frs: Record<string, string> = subData?.file_revision_status || {};
+    const forRevisionFiles = isForRevision ? files.filter((f) => frs[f.url] === "for_revision") : [];
+    const approvedFiles = isForRevision ? files.filter((f) => frs[f.url] !== "for_revision") : files;
+    const hasAnnotatedRevision = forRevisionFiles.length > 0;
+
+    return (
+      <div className="space-y-3">
+        {hasAnnotatedRevision && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+              <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+              <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
+                For Revision ({forRevisionFiles.length})
+              </span>
+            </div>
+            <div className="space-y-2 border border-red-200 rounded-lg bg-red-50 p-2">
+              {forRevisionFiles.map((file, idx) => {
+                const labelPart = file.name.includes(":") ? file.name.split(":")[0].trim() : `File ${idx + 1}`;
+                const fileNamePart = file.name.includes(":") ? file.name.split(":").slice(1).join(":").trim() : file.name;
+                return (
+                  <div key={idx} className="rounded-md border border-red-200 bg-white p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-xs font-medium text-red-700 shrink-0">{labelPart}:</span>
+                        <span className="text-xs text-gray-600 truncate">{fileNamePart}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-purple-400 text-purple-700 hover:bg-purple-50 text-xs h-7 px-2 shrink-0"
+                        onClick={() => {
+                          setPreviewAnnotation({
+                            url: file.url,
+                            name: file.name,
+                            submissionId: String(subData.id),
+                            revisionReason: subData.revision_reason,
+                          });
+                          setIsActivityLogDetailOpen(false);
+                          setIsPreviewAnnotationOpen(true);
+                        }}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View Annotated
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {approvedFiles.length > 0 && (
+          <div className="space-y-2">
+            {isForRevision && (
+              <div className="flex items-center gap-2 px-1">
+                <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                <span className="text-xs font-bold text-green-600 uppercase tracking-wide">
+                  Approved ({approvedFiles.length})
+                </span>
+              </div>
+            )}
+            <div className="space-y-1.5 border border-gray-200 rounded-lg bg-gray-50 p-2">
+              {approvedFiles.map((file, idx) => {
+                const labelPart = file.name.includes(":") ? file.name.split(":")[0].trim() : `File ${idx + 1}`;
+                const fileNamePart = file.name.includes(":") ? file.name.split(":").slice(1).join(":").trim() : file.name;
+                return (
+                  <div key={idx} className="flex items-center justify-between gap-3 p-2 bg-white rounded-md border border-gray-200">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="text-xs font-medium text-[#003b27] shrink-0">{labelPart}:</span>
+                      <span className="text-xs text-gray-600 truncate">{fileNamePart}</span>
+                    </div>
+                    <a href={file.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                      <Button size="sm" variant="outline" className="border-[#003b27] text-[#003b27] hover:bg-[#003b27]/10 text-xs h-7 px-2">
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Open
+                      </Button>
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Mobile Menu Button */}
@@ -2941,6 +3050,120 @@ ${deadlineInfo}`;
           </Tabs>
         </div>
       </div>
+
+      <Dialog
+        open={isActivityLogDetailOpen}
+        onOpenChange={(open) => {
+          setIsActivityLogDetailOpen(open);
+          if (!open) setSelectedActivityLog(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white text-black border-0 shadow-lg">
+          <DialogHeader className="text-black border-b border-gray-200 pb-4 mb-4">
+            <DialogTitle className="text-2xl font-bold text-black" style={{ color: "#003b27" }}>
+              Activity Details
+            </DialogTitle>
+          </DialogHeader>
+
+          {!selectedActivityLog ? (
+            <div className="py-8 text-center text-gray-500 font-medium">
+              Loading activity details...
+            </div>
+          ) : (
+            <div className="space-y-5 py-2 text-black">
+              <div className="p-3 bg-gradient-to-r from-green-50 to-transparent rounded-lg border border-green-100">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Activity Name</p>
+                <p className="text-lg font-semibold text-gray-900 mt-1 break-words">{selectedActivityLog.documentName}</p>
+                {selectedActivityLog.organization && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    Organization: {selectedActivityLog.organization}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { key: "rtcData", label: "Request to Conduct Activity", emoji: "📌" },
+                  { key: "accomplishmentData", label: "Accomplishment Report", emoji: "📄" },
+                  { key: "liquidationData", label: "Liquidation Report", emoji: "💰" },
+                  { key: "loaData", label: "Letter of Appeal", emoji: "📝" },
+                ].map(({ key, label, emoji }) => {
+                  const subData = (selectedActivityLog as any)[key];
+                  if (!subData) {
+                    return (
+                      <div key={key} className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-lg shrink-0">{emoji}</span>
+                            <p className="font-semibold text-gray-900 truncate">{label}</p>
+                          </div>
+                          <span className="text-xs text-gray-400">Not submitted</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={key} className="p-4 border border-gray-300 rounded-lg bg-white">
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-lg shrink-0">{emoji}</span>
+                          <p className="font-semibold text-gray-900 truncate">{label}</p>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(subData.status)}`}>
+                            {subData.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {subData.status === "For Revision" && subData.revision_reason && (
+                        <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded">
+                          <p className="text-xs font-semibold text-orange-900">Revision Required</p>
+                          <p className="text-xs text-gray-700 mt-1 break-words">{subData.revision_reason}</p>
+                        </div>
+                      )}
+
+                      {renderSubmissionFiles(subData)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isPreviewAnnotationOpen}
+        onOpenChange={(open) => {
+          setIsPreviewAnnotationOpen(open);
+          if (!open) setPreviewAnnotation(null);
+        }}
+      >
+        <DialogContent className="max-w-5xl w-full h-[92vh] flex flex-col p-0 gap-0 overflow-x-hidden">
+          <DialogHeader className="px-4 py-3 border-b shrink-0">
+            <DialogTitle className="text-sm font-medium truncate">
+              {previewAnnotation?.name.includes(":") ? previewAnnotation.name.split(":")[0].trim() : previewAnnotation?.name}
+            </DialogTitle>
+            {previewAnnotation?.revisionReason && (
+              <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 mt-1 break-words">
+                <span className="font-semibold">Revision note:</span> {previewAnnotation.revisionReason}
+              </p>
+            )}
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {previewAnnotation && (
+              <FileAnnotationViewer
+                key={`${previewAnnotation.submissionId}-${previewAnnotation.url}`}
+                url={previewAnnotation.url}
+                fileName={previewAnnotation.name}
+                submissionId={previewAnnotation.submissionId}
+                initialAnnotateMode={false}
+                readOnly={true}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Logout Confirmation Dialog */}
       <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
