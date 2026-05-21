@@ -1412,8 +1412,7 @@ export default function SubmissionsPage({
                 if (files.length === 0) return null;
 
                 const isApproverOrg = ['LCO', 'USG', 'OSLD', 'COA'].includes(orgShortName);
-                const isOsldReadOnly = orgShortName === 'OSLD' && selectedSubmission.submitted_to === 'COA';
-                const isApprover = isApproverOrg && !isOsldReadOnly;
+                const isApprover = isApproverOrg;
                 const isSubmitter = !isApproverOrg;
                 const frs = selectedSubmission.file_revision_status || {};
                 // Files explicitly marked for_revision
