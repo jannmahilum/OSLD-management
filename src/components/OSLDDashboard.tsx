@@ -3023,7 +3023,7 @@ ${deadlineInfo}`;
           }
         }}
       >
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-black border-0 shadow-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white text-black border-0 shadow-lg">
           <DialogHeader className="text-black border-b border-gray-200 pb-4 mb-4">
             <DialogTitle className="text-2xl font-bold text-black" style={{ color: "#003b27" }}>
               Activity Details
@@ -3068,7 +3068,7 @@ ${deadlineInfo}`;
                             <span className="text-lg">{x.label}</span> {x.title} - Revision Required
                           </p>
                           <div className="mt-2 p-3 bg-white border border-orange-100 rounded">
-                            <p className="text-gray-800 text-sm">{x.data.revisionReason || x.data.revision_reason}</p>
+                            <p className="text-gray-800 text-sm break-words whitespace-pre-wrap">{x.data.revisionReason || x.data.revision_reason}</p>
                           </div>
                         </div>
                       ) : null
@@ -3083,7 +3083,7 @@ ${deadlineInfo}`;
                     Revision Required
                   </p>
                   <div className="mt-2 p-3 bg-white border border-orange-100 rounded">
-                    <p className="text-gray-800 text-sm">{selectedActivityLog.revisionReason || selectedActivityLog.revision_reason}</p>
+                    <p className="text-gray-800 text-sm break-words whitespace-pre-wrap">{selectedActivityLog.revisionReason || selectedActivityLog.revision_reason}</p>
                   </div>
                 </div>
               )}
@@ -3102,7 +3102,7 @@ ${deadlineInfo}`;
                   {(selectedActivityLog.coaComment || selectedActivityLog.coa_comment) && (
                     <p className="text-gray-700 text-sm">
                       <span className="font-semibold text-gray-900">Comment:</span>{" "}
-                      <span className="text-gray-700">{selectedActivityLog.coaComment || selectedActivityLog.coa_comment}</span>
+                      <span className="text-gray-700 break-words whitespace-pre-wrap">{selectedActivityLog.coaComment || selectedActivityLog.coa_comment}</span>
                     </p>
                   )}
                 </div>
@@ -3176,7 +3176,7 @@ ${deadlineInfo}`;
                       <div className="space-y-2">
                         {files.map((file: { name: string; url: string }, idx: number) => (
                           <div key={idx} className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded border border-gray-200">
-                            <span className="text-sm text-gray-700 truncate flex-1" title={file.name}>
+                            <span className="text-sm text-gray-700 truncate flex-1 min-w-0" title={file.name}>
                               {file.name}
                             </span>
                             <Button

@@ -4605,7 +4605,7 @@ export default function LSGDashboard() {
 
         {/* Activity Log Detail Dialog */}
         <Dialog open={isLogDetailOpen} onOpenChange={setIsLogDetailOpen}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold" style={{ color: "#003b27" }}>
                 Activity Details

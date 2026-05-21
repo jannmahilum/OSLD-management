@@ -5109,7 +5109,7 @@ function AODashboard({
 
         {/* Activity Log Detail Dialog */}
         <Dialog open={isLogDetailOpen} onOpenChange={setIsLogDetailOpen}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-black border-0 shadow-lg">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white text-black border-0 shadow-lg">
             <DialogHeader className="text-black border-b border-gray-200 pb-4 mb-4">
               <DialogTitle className="text-2xl font-bold text-black" style={{ color: "#003b27" }}>
                 Activity Details
@@ -5138,7 +5138,7 @@ function AODashboard({
                           You are advised to revise your Accomplishment Report due to the following reasons:
                         </p>
                         <div className="mt-2 p-3 bg-white border border-orange-100 rounded">
-                          <p className="text-gray-800 text-sm">{selectedLog.accomplishmentData.revisionReason}</p>
+                          <p className="text-gray-800 text-sm break-words whitespace-pre-wrap">{selectedLog.accomplishmentData.revisionReason}</p>
                         </div>
                       </div>
                     )}
@@ -5152,7 +5152,7 @@ function AODashboard({
                           You are advised to revise your Liquidation Report due to the following reasons:
                         </p>
                         <div className="mt-2 p-3 bg-white border border-orange-100 rounded">
-                          <p className="text-gray-800 text-sm">{selectedLog.liquidationData.revisionReason}</p>
+                          <p className="text-gray-800 text-sm break-words whitespace-pre-wrap">{selectedLog.liquidationData.revisionReason}</p>
                         </div>
                       </div>
                     )}
@@ -5171,7 +5171,7 @@ function AODashboard({
                       You are advised to revise your request to conduct activity due to the following reasons:
                     </p>
                     <div className="mt-2 p-3 bg-white border border-orange-100 rounded">
-                      <p className="text-gray-800 text-sm">{selectedLog.revisionReason}</p>
+                      <p className="text-gray-800 text-sm break-words whitespace-pre-wrap">{selectedLog.revisionReason}</p>
                     </div>
                     <p className="text-sm text-gray-600 italic mt-3">
                       Please stay updated for further announcements.
