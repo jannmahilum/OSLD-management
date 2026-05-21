@@ -620,6 +620,9 @@ export default function OSLDDashboard() {
   };
   const [selectedActivityLog, setSelectedActivityLog] = useState<any | null>(null);
   const [isActivityLogDetailOpen, setIsActivityLogDetailOpen] = useState(false);
+  const [isDeleteActivityLogDialogOpen, setIsDeleteActivityLogDialogOpen] = useState(false);
+  const [activityLogToDelete, setActivityLogToDelete] = useState<{ activityTitle: string; organization: string } | null>(null);
+  const [isDeletingActivityLog, setIsDeletingActivityLog] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string>("");
   const [logFilterType, setLogFilterType] = useState("all");
   const [logFilterAction, setLogFilterAction] = useState("all");
@@ -1129,6 +1132,73 @@ export default function OSLDDashboard() {
     setNotificationMessage(message);
     setShowNotification(true);
     setTimeout(() => setShowNotification(false), 3000);
+  };
+
+  const getStoragePathFromPublicUrl = (url: string) => {
+    const marker = "/storage/v1/object/public/submissions/";
+    const idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    const rest = url.slice(idx + marker.length);
+    const path = rest.split("?")[0];
+    return decodeURIComponent(path);
+  };
+
+  const getStoragePathsFromSubmission = (submission: any) => {
+    const urls = (submission.file_urls || submission.file_url || "")
+      .split(" | ")
+      .map((u: string) => u.trim())
+      .filter(Boolean);
+    return urls
+      .map((u: string) => getStoragePathFromPublicUrl(u))
+      .filter((p: string | null): p is string => !!p);
+  };
+
+  const openDeleteActivityLogDialog = (activityTitle: string, organization: string) => {
+    setActivityLogToDelete({ activityTitle, organization });
+    setIsDeleteActivityLogDialogOpen(true);
+  };
+
+  const handleDeleteActivityLog = async () => {
+    if (!activityLogToDelete) return;
+    setIsDeletingActivityLog(true);
+    try {
+      const { data: submissionsToDelete, error: fetchError } = await supabase
+        .from("submissions")
+        .select("id, file_url, file_urls")
+        .eq("activity_title", activityLogToDelete.activityTitle)
+        .eq("organization", activityLogToDelete.organization);
+
+      if (fetchError) throw fetchError;
+
+      const storagePaths = Array.from(
+        new Set((submissionsToDelete || []).flatMap((s: any) => getStoragePathsFromSubmission(s)))
+      );
+
+      if (storagePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from("submissions")
+          .remove(storagePaths);
+        if (storageError) throw storageError;
+      }
+
+      const ids = (submissionsToDelete || []).map((s: any) => s.id).filter(Boolean);
+      if (ids.length > 0) {
+        const { error: updateError } = await supabase
+          .from("submissions")
+          .update({ status: "Deleted (Previously Approved)" })
+          .in("id", ids);
+        if (updateError) throw updateError;
+      }
+
+      await fetchActivityLogs();
+      showNotif("Activity log deleted successfully");
+    } catch (error: any) {
+      showNotif(error?.message || "Failed to delete activity log");
+    } finally {
+      setIsDeletingActivityLog(false);
+      setIsDeleteActivityLogDialogOpen(false);
+      setActivityLogToDelete(null);
+    }
   };
 
   const getDaysInMonth = (date: Date) => {
@@ -2650,42 +2720,13 @@ ${deadlineInfo}`;
                     <td className="px-2 py-2 text-[10px] text-gray-500">{log.date}</td>
                     <td className="px-2 py-2">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-6 px-2 text-[10px]"
-                        onClick={async () => {
-                          // Fetch all submissions for this document
-                          const { data: allSubmissions } = await supabase
-                            .from('submissions')
-                            .select('*')
-                            .eq('activity_title', activityTitle)
-                            .eq('organization', log.organization);
-                          
-                          const groupedData: any = {
-                            ...log,
-                            isGroupedView: true,
-                            allSubmissions: allSubmissions || []
-                          };
-                          
-                          // Group by type
-                          allSubmissions?.forEach(sub => {
-                            if (sub.submission_type === 'Request to Conduct Activity') {
-                              groupedData.rtcData = sub;
-                            } else if (sub.submission_type === 'Accomplishment Report') {
-                              groupedData.accomplishmentData = sub;
-                            } else if (sub.submission_type === 'Liquidation Report') {
-                              groupedData.liquidationData = sub;
-                            } else if (sub.submission_type === 'Letter of Appeal') {
-                              groupedData.loaData = sub;
-                            }
-                          });
-                          
-                          setSelectedActivityLog(groupedData);
-                          setIsActivityLogDetailOpen(true);
-                        }}
+                        className="h-6 px-2 text-[10px] border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+                        onClick={() => openDeleteActivityLogDialog(activityTitle, log.organization)}
                       >
-                        <Eye className="h-3 w-3 mr-0.5" />
-                        View
+                        <Trash2 className="h-3 w-3 mr-0.5" />
+                        Delete
                       </Button>
                     </td>
                   </tr>
@@ -2939,6 +2980,118 @@ ${deadlineInfo}`;
           </Tabs>
         </div>
       </div>
+
+      <DeleteConfirmationDialog
+        open={isDeleteActivityLogDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteActivityLogDialogOpen(open);
+          if (!open) {
+            setActivityLogToDelete(null);
+          }
+        }}
+        title="Delete Activity Log"
+        description="Are you sure you want to delete this row and its uploaded file(s)?"
+        itemName={activityLogToDelete?.activityTitle}
+        onConfirm={handleDeleteActivityLog}
+        isLoading={isDeletingActivityLog}
+        isDangerous={true}
+      />
+
+      <Dialog
+        open={isActivityLogDetailOpen}
+        onOpenChange={(open) => {
+          setIsActivityLogDetailOpen(open);
+          if (!open) {
+            setSelectedActivityLog(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold" style={{ color: "#003b27" }}>
+              Activity Log Details
+            </DialogTitle>
+          </DialogHeader>
+          {!selectedActivityLog ? (
+            <div className="py-10 text-center text-gray-500">Loading...</div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <div className="p-4 bg-[#003b27]/5 rounded-lg">
+                <div className="text-lg font-bold text-[#003b27]">{selectedActivityLog.documentName}</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  {({
+                    "OSLD": "Office of Student Leadership and Development",
+                    "AO": "Accredited Organizations",
+                    "LSG": "Local Student Government",
+                    "GSC": "Graduating Student Council",
+                    "LCO": "League of Campus Organization",
+                    "USG": "University Student Government",
+                    "TGP": "The Gold Panicles",
+                    "USED": "University Student Enterprise Development"
+                  } as any)[selectedActivityLog.organization] || selectedActivityLog.organization}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {(selectedActivityLog.allSubmissions || []).length === 0 ? (
+                  <div className="text-sm text-gray-500">No submissions found.</div>
+                ) : (
+                  <div className="overflow-x-auto border rounded-lg">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Files</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {(selectedActivityLog.allSubmissions || []).map((sub: any) => {
+                          const urls = (sub.file_urls || sub.file_url || "").split(" | ").map((u: string) => u.trim()).filter(Boolean);
+                          const names = (sub.file_name || "").split(" | ").map((n: string) => n.trim()).filter(Boolean);
+                          const files = urls.map((u: string, idx: number) => ({
+                            url: u,
+                            name: names[idx] || names[0] || "File"
+                          }));
+                          return (
+                            <tr key={sub.id} className="hover:bg-gray-50">
+                              <td className="px-3 py-2 text-xs text-gray-700">{sub.submission_type}</td>
+                              <td className="px-3 py-2 text-xs text-gray-700">{sub.status}</td>
+                              <td className="px-3 py-2 text-xs">
+                                <div className="flex flex-col gap-1">
+                                  {files.length === 0 ? (
+                                    <span className="text-gray-400">No file</span>
+                                  ) : (
+                                    files.map((f: any) => (
+                                      <button
+                                        key={f.url}
+                                        type="button"
+                                        className="text-left text-blue-600 hover:underline truncate max-w-[480px]"
+                                        title={f.name}
+                                        onClick={() => window.open(f.url, "_blank")}
+                                      >
+                                        {f.name}
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 text-xs text-gray-600">
+                                {sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : ""}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Logout Confirmation Dialog */}
       <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
