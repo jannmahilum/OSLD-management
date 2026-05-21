@@ -4764,14 +4764,16 @@ export default function LSGDashboard() {
                                               <Eye className="h-3 w-3 mr-1" />
                                               View Annotated
                                             </Button>
-                                            <Button
-                                              size="sm"
-                                              className="bg-[#003b27] hover:bg-[#004d33] text-white text-xs h-7 px-2 w-full sm:w-auto justify-center"
-                                              onClick={() => setRevisionUploadFile({ submissionId: subData.id, fileUrl: file.url, fileName: file.name })}
-                                            >
-                                              <Upload className="h-3 w-3 mr-1" />
-                                              Submit Revised
-                                            </Button>
+                                            {subData?.organization === 'LSG' && (
+                                              <Button
+                                                size="sm"
+                                                className="bg-[#003b27] hover:bg-[#004d33] text-white text-xs h-7 px-2 w-full sm:w-auto justify-center"
+                                                onClick={() => setRevisionUploadFile({ submissionId: subData.id, fileUrl: file.url, fileName: file.name })}
+                                              >
+                                                <Upload className="h-3 w-3 mr-1" />
+                                                Submit Revised
+                                              </Button>
+                                            )}
                                           </div>
                                         </div>
                                         {isUploadingThis && (
