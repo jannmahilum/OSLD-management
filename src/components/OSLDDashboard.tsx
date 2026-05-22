@@ -557,6 +557,7 @@ export default function OSLDDashboard() {
   const [isEditAccountModalOpen, setIsEditAccountModalOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [sentVerificationCode, setSentVerificationCode] = useState("");
   const [isVerificationSent, setIsVerificationSent] = useState(false);
@@ -5163,6 +5164,31 @@ ${deadlineInfo}`;
                   Leave blank to keep current password
                 </p>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-base font-medium">
+                  Retype Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Retype new password"
+                    className="text-base pr-20"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-sm h-8"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
             </div>
             <DialogFooter className="gap-2">
               <Button
@@ -5170,6 +5196,7 @@ ${deadlineInfo}`;
                 onClick={() => {
                   setIsEditAccountModalOpen(false);
                   setNewPassword("");
+                  setConfirmPassword("");
                 }}
                 className="flex-1"
               >
@@ -5178,6 +5205,22 @@ ${deadlineInfo}`;
               <Button
                 onClick={async () => {
                   if (newPassword) {
+                    if (!confirmPassword) {
+                      toast({
+                        title: "Error",
+                        description: "Please retype your new password",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
+                    if (newPassword !== confirmPassword) {
+                      toast({
+                        title: "Error",
+                        description: "Passwords do not match",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
                     try {
                       // Update password in localStorage (OSLD uses hardcoded credentials)
                       localStorage.setItem("osld_userPassword", newPassword);
@@ -5190,6 +5233,7 @@ ${deadlineInfo}`;
                       });
                       setIsEditAccountModalOpen(false);
                       setNewPassword("");
+                      setConfirmPassword("");
                     } catch (error: any) {
                       toast({
                         title: "Error",
@@ -5199,6 +5243,7 @@ ${deadlineInfo}`;
                     }
                   } else {
                     setIsEditAccountModalOpen(false);
+                    setConfirmPassword("");
                   }
                 }}
                 className="flex-1"
