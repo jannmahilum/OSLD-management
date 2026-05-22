@@ -181,6 +181,7 @@ function AODashboard({
   
   // Profile state
   const [showProfile, setShowProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [currentEmail, setCurrentEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -2126,8 +2127,13 @@ function AODashboard({
     setIsVerificationSent(true);
   };
 
-  const handleSaveProfile = () => {
-    console.log("Profile saved");
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      console.log("Profile saved");
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   // Load officers, advisers, and social contacts from database on mount
@@ -6924,15 +6930,28 @@ function AODashboard({
 
                 <Button
                   onClick={handleSaveProfile}
+                  disabled={isSavingProfile}
                   className="w-full h-14 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
                   style={{ backgroundColor: "#003b27" }}
                 >
-                  Save Profile
+                  {isSavingProfile && (
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-3" />
+                  )}
+                  {isSavingProfile ? "Saving..." : "Save Profile"}
                 </Button>
               </div>
             </div>
           </div>
         </div>
+
+        {isSavingProfile && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+            <div className="rounded-xl bg-white/90 px-6 py-4 shadow-xl border border-white/20 flex items-center gap-3">
+              <div className="animate-spin h-6 w-6 border-2 border-[#003b27] border-t-transparent rounded-full" />
+              <span className="text-sm font-semibold text-gray-900">Saving profile...</span>
+            </div>
+          </div>
+        )}
 
         {/* Logout Confirmation Dialog */}
         <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>

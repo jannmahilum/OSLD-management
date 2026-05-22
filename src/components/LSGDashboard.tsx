@@ -574,6 +574,7 @@ export default function LSGDashboard() {
 
   // Profile state
   const [showProfile, setShowProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [currentEmail, setCurrentEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -2253,6 +2254,7 @@ export default function LSGDashboard() {
   }, []);
 
   const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
     try {
       // Upload budget proposal files
       for (const file of budgetProposalFiles) {
@@ -2314,6 +2316,8 @@ export default function LSGDashboard() {
         description: "Failed to save profile. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -5366,12 +5370,24 @@ export default function LSGDashboard() {
 
               {/* Save Profile Button */}
               <div className="mt-8">
+                {isSavingProfile && (
+                  <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                    <div className="rounded-xl bg-white/90 px-6 py-4 shadow-xl border border-white/20 flex items-center gap-3">
+                      <div className="animate-spin h-6 w-6 border-2 border-[#003b27] border-t-transparent rounded-full" />
+                      <span className="text-sm font-semibold text-gray-900">Saving profile...</span>
+                    </div>
+                  </div>
+                )}
                 <Button
                   onClick={handleSaveProfile}
+                  disabled={isSavingProfile}
                   className="w-full h-14 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
                   style={{ backgroundColor: "#003b27" }}
                 >
-                  Save Profile
+                  {isSavingProfile && (
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-3" />
+                  )}
+                  {isSavingProfile ? "Saving..." : "Save Profile"}
                 </Button>
               </div>
             </div>
