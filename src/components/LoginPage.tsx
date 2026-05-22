@@ -44,6 +44,14 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "./ui/drawer";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from "./ui/carousel";
 import { supabase } from "../lib/supabase";
 
 const loginSchema = z.object({
@@ -110,6 +118,119 @@ const isImageDoc = (doc: OrgDocument) => {
     url.startsWith("data:image/")
   );
 };
+
+type PortalDocSectionProps = {
+  title: string;
+  description: string;
+  docs: OrgDocument[];
+  emptyText: string;
+};
+
+function PortalDocSection({
+  title,
+  description,
+  docs,
+  emptyText,
+}: PortalDocSectionProps) {
+  const images = docs.filter(isImageDoc);
+  const files = docs.filter((doc) => !isImageDoc(doc));
+  const [api, setApi] = useState<CarouselApi | null>(null);
+
+  useEffect(() => {
+    if (!api || images.length < 2) return;
+    const intervalId = window.setInterval(() => {
+      api.scrollNext();
+    }, 5000);
+    return () => window.clearInterval(intervalId);
+  }, [api, images.length]);
+
+  return (
+    <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+          {title}
+        </CardTitle>
+        <CardDescription className="text-slate-700 dark:text-slate-300">
+          {description}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {docs.length === 0 ? (
+          <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
+            {emptyText}
+          </div>
+        ) : (
+          <>
+            {images.length > 0 && (
+              <Carousel
+                setApi={(nextApi) => setApi(nextApi)}
+                opts={{ loop: images.length > 1 }}
+                className="w-full"
+              >
+                <CarouselContent>
+                  {images.map((img) => (
+                    <CarouselItem key={img.id}>
+                      <button
+                        type="button"
+                        className="w-full overflow-hidden rounded-xl border border-white/20 bg-white/40 shadow-sm transition-colors hover:bg-white/50 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10"
+                        onClick={() => window.open(img.file_url, "_blank")}
+                      >
+                        <img
+                          src={img.file_url}
+                          alt={`${title} image`}
+                          className="h-72 w-full object-contain"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </button>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                {images.length > 1 && (
+                  <>
+                    <CarouselPrevious className="left-2 top-1/2 -translate-y-1/2 border-white/30 bg-white/70 hover:bg-white/90 dark:bg-slate-950/70 dark:border-white/10 dark:hover:bg-slate-950/90" />
+                    <CarouselNext className="right-2 top-1/2 -translate-y-1/2 border-white/30 bg-white/70 hover:bg-white/90 dark:bg-slate-950/70 dark:border-white/10 dark:hover:bg-slate-950/90" />
+                  </>
+                )}
+              </Carousel>
+            )}
+
+            {files.length > 0 && (
+              <div className="space-y-2">
+                {files.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                        <span className="truncate">{doc.file_name}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                        {new Date(doc.uploaded_at).toLocaleString()}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                      onClick={() => window.open(doc.file_url, "_blank")}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -328,198 +449,26 @@ export default function LoginPage() {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="h-[420px] border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10 flex flex-col">
-          <CardHeader className="pb-3">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                  Announcements
-                </CardTitle>
-                <CardDescription className="text-slate-700 dark:text-slate-300">
-                  Important updates and deadlines.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-auto pr-1">
-            {portalDocs.announcements.length === 0 ? (
-              <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
-                OSLD hasn't uploaded announcements yet.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {portalDocs.announcements.map((a) =>
-                  isImageDoc(a) ? (
-                    <button
-                      key={a.id}
-                      type="button"
-                      className="w-full overflow-hidden rounded-xl border border-white/20 bg-white/40 shadow-sm transition-colors hover:bg-white/50 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10"
-                      onClick={() => window.open(a.file_url, "_blank")}
-                    >
-                      <img
-                        src={a.file_url}
-                        alt="Announcement image"
-                        className="h-56 w-full object-contain"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    </button>
-                  ) : (
-                    <div
-                      key={a.id}
-                      className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                          <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                          <span className="truncate">{a.file_name}</span>
-                        </div>
-                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                          {new Date(a.uploaded_at).toLocaleString()}
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                        onClick={() => window.open(a.file_url, "_blank")}
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        View
-                      </Button>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <PortalDocSection
+        title="Announcements"
+        description="Important updates and deadlines."
+        docs={portalDocs.announcements}
+        emptyText="OSLD hasn't uploaded announcements yet."
+      />
 
-        <Card className="h-[420px] border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10 flex flex-col">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-              Memorandums
-            </CardTitle>
-            <CardDescription className="text-slate-700 dark:text-slate-300">
-              Latest documents and policy updates.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-auto space-y-2 pr-1">
-            {portalDocs.memorandums.length === 0 ? (
-              <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
-                OSLD hasn't uploaded memorandums yet.
-              </div>
-            ) : (
-              portalDocs.memorandums.map((m) =>
-                isImageDoc(m) ? (
-                  <button
-                    key={m.id}
-                    type="button"
-                    className="w-full overflow-hidden rounded-xl border border-white/20 bg-white/40 shadow-sm transition-colors hover:bg-white/50 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10"
-                    onClick={() => window.open(m.file_url, "_blank")}
-                  >
-                    <img
-                      src={m.file_url}
-                      alt="Memorandum image"
-                      className="h-56 w-full object-contain"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </button>
-                ) : (
-                  <div
-                    key={m.id}
-                    className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                        <span className="truncate">{m.file_name}</span>
-                      </div>
-                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                        {new Date(m.uploaded_at).toLocaleString()}
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                      onClick={() => window.open(m.file_url, "_blank")}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      View
-                    </Button>
-                  </div>
-                )
-              )
-            )}
-          </CardContent>
-        </Card>
-        <Card className="h-[420px] border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10 flex flex-col">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-              Functional Flow
-            </CardTitle>
-            <CardDescription className="text-slate-700 dark:text-slate-300">
-              Approval and oversight path across key offices.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-auto space-y-2 pr-1">
-            {portalDocs.functionalCharts.length === 0 ? (
-              <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
-                OSLD hasn't uploaded the functional flow yet.
-              </div>
-            ) : (
-              portalDocs.functionalCharts.map((f) =>
-                isImageDoc(f) ? (
-                  <button
-                    key={f.id}
-                    type="button"
-                    className="w-full overflow-hidden rounded-xl border border-white/20 bg-white/40 shadow-sm transition-colors hover:bg-white/50 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10"
-                    onClick={() => window.open(f.file_url, "_blank")}
-                  >
-                    <img
-                      src={f.file_url}
-                      alt="Functional chart image"
-                      className="h-56 w-full object-contain"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </button>
-                ) : (
-                  <div
-                    key={f.id}
-                    className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                        <span className="truncate">{f.file_name}</span>
-                      </div>
-                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                        {new Date(f.uploaded_at).toLocaleString()}
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                      onClick={() => window.open(f.file_url, "_blank")}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      View
-                    </Button>
-                  </div>
-                )
-              )
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <PortalDocSection
+        title="Memorandums"
+        description="Latest documents and policy updates."
+        docs={portalDocs.memorandums}
+        emptyText="OSLD hasn't uploaded memorandums yet."
+      />
+
+      <PortalDocSection
+        title="Functional Flow"
+        description="Approval and oversight path across key offices."
+        docs={portalDocs.functionalCharts}
+        emptyText="OSLD hasn't uploaded the functional flow yet."
+      />
 
       <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
         <CardHeader className="pb-3">
