@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  Image as ImageIcon,
   Lock,
   Mail,
   Moon,
@@ -328,45 +329,6 @@ export default function LoginPage() {
         </CardHeader>
       </Card>
 
-      <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Main Organizations
-          </CardTitle>
-          <CardDescription className="text-slate-700 dark:text-slate-300">
-            Access and coordinate across core offices and councils.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {portalOrganizations.map((org) => {
-            const Icon = org.icon;
-            return (
-              <motion.div
-                key={org.acronym}
-                whileHover={{ y: -4 }}
-                transition={{ type: "spring", stiffness: 420, damping: 28 }}
-                className="group relative overflow-hidden rounded-xl border border-white/20 bg-white/60 p-4 shadow-sm transition-colors dark:bg-white/5 dark:border-white/10"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {org.acronym}
-                    </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-300">
-                      {org.name}
-                    </div>
-                  </div>
-                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-[#014421]/10 text-[#014421] ring-1 ring-[#D4AF37]/30 transition-colors group-hover:bg-[#014421]/15 dark:bg-[#014421]/20 dark:text-[#D4AF37] dark:ring-[#D4AF37]/25">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-                <div className="pointer-events-none absolute -right-16 -bottom-16 h-44 w-44 rounded-full bg-gradient-to-br from-[#014421]/0 via-[#014421]/10 to-[#D4AF37]/20 blur-2xl transition-opacity group-hover:opacity-100 dark:via-[#014421]/15 dark:to-[#D4AF37]/15" />
-              </motion.div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
           <CardHeader className="pb-3">
@@ -396,23 +358,34 @@ export default function LoginPage() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                          <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                          <span className="truncate">{a.file_name}</span>
+                          {isImageDoc(a) ? (
+                            <>
+                              <ImageIcon className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                              <span className="truncate">Image</span>
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                              <span className="truncate">{a.file_name}</span>
+                            </>
+                          )}
                         </div>
                         <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                           {new Date(a.uploaded_at).toLocaleString()}
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                        onClick={() => window.open(a.file_url, "_blank")}
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        View
-                      </Button>
+                      {!isImageDoc(a) && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                          onClick={() => window.open(a.file_url, "_blank")}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          View
+                        </Button>
+                      )}
                     </div>
                     {isImageDoc(a) && (
                       <button
@@ -422,7 +395,7 @@ export default function LoginPage() {
                       >
                         <img
                           src={a.file_url}
-                          alt={a.file_name}
+                          alt="Announcement image"
                           className="max-h-56 w-full object-contain"
                           loading="lazy"
                           decoding="async"
@@ -459,23 +432,34 @@ export default function LoginPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                        <span className="truncate">{m.file_name}</span>
+                        {isImageDoc(m) ? (
+                          <>
+                            <ImageIcon className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                            <span className="truncate">Image</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                            <span className="truncate">{m.file_name}</span>
+                          </>
+                        )}
                       </div>
                       <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                         {new Date(m.uploaded_at).toLocaleString()}
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                      onClick={() => window.open(m.file_url, "_blank")}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      View
-                    </Button>
+                    {!isImageDoc(m) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                        onClick={() => window.open(m.file_url, "_blank")}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        View
+                      </Button>
+                    )}
                   </div>
                   {isImageDoc(m) && (
                     <button
@@ -485,7 +469,7 @@ export default function LoginPage() {
                     >
                       <img
                         src={m.file_url}
-                        alt={m.file_name}
+                        alt="Memorandum image"
                         className="max-h-64 w-full object-contain"
                         loading="lazy"
                         decoding="async"
@@ -523,23 +507,34 @@ export default function LoginPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                        <span className="truncate">{f.file_name}</span>
+                        {isImageDoc(f) ? (
+                          <>
+                            <ImageIcon className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                            <span className="truncate">Image</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                            <span className="truncate">{f.file_name}</span>
+                          </>
+                        )}
                       </div>
                       <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                         {new Date(f.uploaded_at).toLocaleString()}
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                      onClick={() => window.open(f.file_url, "_blank")}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      View
-                    </Button>
+                    {!isImageDoc(f) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                        onClick={() => window.open(f.file_url, "_blank")}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        View
+                      </Button>
+                    )}
                   </div>
                   {isImageDoc(f) && (
                     <button
@@ -549,7 +544,7 @@ export default function LoginPage() {
                     >
                       <img
                         src={f.file_url}
-                        alt={f.file_name}
+                        alt="Functional chart image"
                         className="max-h-80 w-full object-contain"
                         loading="lazy"
                         decoding="async"
@@ -560,6 +555,45 @@ export default function LoginPage() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            Main Organizations
+          </CardTitle>
+          <CardDescription className="text-slate-700 dark:text-slate-300">
+            Access and coordinate across core offices and councils.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {portalOrganizations.map((org) => {
+            const Icon = org.icon;
+            return (
+              <motion.div
+                key={org.acronym}
+                whileHover={{ y: -4 }}
+                transition={{ type: "spring", stiffness: 420, damping: 28 }}
+                className="group relative overflow-hidden rounded-xl border border-white/20 bg-white/60 p-4 shadow-sm transition-colors dark:bg-white/5 dark:border-white/10"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {org.acronym}
+                    </div>
+                    <div className="text-xs text-slate-600 dark:text-slate-300">
+                      {org.name}
+                    </div>
+                  </div>
+                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-[#014421]/10 text-[#014421] ring-1 ring-[#D4AF37]/30 transition-colors group-hover:bg-[#014421]/15 dark:bg-[#014421]/20 dark:text-[#D4AF37] dark:ring-[#D4AF37]/25">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="pointer-events-none absolute -right-16 -bottom-16 h-44 w-44 rounded-full bg-gradient-to-br from-[#014421]/0 via-[#014421]/10 to-[#D4AF37]/20 blur-2xl transition-opacity group-hover:opacity-100 dark:via-[#014421]/15 dark:to-[#D4AF37]/15" />
+              </motion.div>
+            );
+          })}
         </CardContent>
       </Card>
     </div>
