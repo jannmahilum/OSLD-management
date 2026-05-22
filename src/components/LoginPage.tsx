@@ -9,7 +9,6 @@ import {
   Eye,
   EyeOff,
   FileText,
-  Image as ImageIcon,
   Lock,
   Mail,
   Moon,
@@ -329,8 +328,8 @@ export default function LoginPage() {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="h-[420px] border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10 flex flex-col">
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
@@ -343,73 +342,62 @@ export default function LoginPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-auto pr-1">
             {portalDocs.announcements.length === 0 ? (
               <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
                 OSLD hasn't uploaded announcements yet.
               </div>
             ) : (
-              <div className="max-h-72 space-y-2 overflow-auto pr-1">
-                {portalDocs.announcements.map((a) => (
-                  <div
-                    key={a.id}
-                    className="flex flex-col gap-3 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-                  >
-                    <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                {portalDocs.announcements.map((a) =>
+                  isImageDoc(a) ? (
+                    <button
+                      key={a.id}
+                      type="button"
+                      className="w-full overflow-hidden rounded-xl border border-white/20 bg-white/40 shadow-sm transition-colors hover:bg-white/50 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10"
+                      onClick={() => window.open(a.file_url, "_blank")}
+                    >
+                      <img
+                        src={a.file_url}
+                        alt="Announcement image"
+                        className="h-56 w-full object-contain"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </button>
+                  ) : (
+                    <div
+                      key={a.id}
+                      className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                    >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                          {isImageDoc(a) ? (
-                            <>
-                              <ImageIcon className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                              <span className="truncate">Image</span>
-                            </>
-                          ) : (
-                            <>
-                              <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                              <span className="truncate">{a.file_name}</span>
-                            </>
-                          )}
+                          <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                          <span className="truncate">{a.file_name}</span>
                         </div>
                         <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                           {new Date(a.uploaded_at).toLocaleString()}
                         </div>
                       </div>
-                      {!isImageDoc(a) && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                          onClick={() => window.open(a.file_url, "_blank")}
-                        >
-                          <Download className="mr-2 h-4 w-4" />
-                          View
-                        </Button>
-                      )}
-                    </div>
-                    {isImageDoc(a) && (
-                      <button
+                      <Button
                         type="button"
-                        className="overflow-hidden rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 dark:border-white/10"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
                         onClick={() => window.open(a.file_url, "_blank")}
                       >
-                        <img
-                          src={a.file_url}
-                          alt="Announcement image"
-                          className="max-h-56 w-full object-contain"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                        <Download className="mr-2 h-4 w-4" />
+                        View
+                      </Button>
+                    </div>
+                  )
+                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
+        <Card className="h-[420px] border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10 flex flex-col">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
               Memorandums
@@ -418,145 +406,120 @@ export default function LoginPage() {
               Latest documents and policy updates.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="flex-1 overflow-auto space-y-2 pr-1">
             {portalDocs.memorandums.length === 0 ? (
               <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
                 OSLD hasn't uploaded memorandums yet.
               </div>
             ) : (
-              portalDocs.memorandums.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex flex-col gap-3 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-                >
-                  <div className="flex items-start justify-between gap-4">
+              portalDocs.memorandums.map((m) =>
+                isImageDoc(m) ? (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className="w-full overflow-hidden rounded-xl border border-white/20 bg-white/40 shadow-sm transition-colors hover:bg-white/50 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10"
+                    onClick={() => window.open(m.file_url, "_blank")}
+                  >
+                    <img
+                      src={m.file_url}
+                      alt="Memorandum image"
+                      className="h-56 w-full object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </button>
+                ) : (
+                  <div
+                    key={m.id}
+                    className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                  >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                        {isImageDoc(m) ? (
-                          <>
-                            <ImageIcon className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                            <span className="truncate">Image</span>
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                            <span className="truncate">{m.file_name}</span>
-                          </>
-                        )}
+                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                        <span className="truncate">{m.file_name}</span>
                       </div>
                       <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                         {new Date(m.uploaded_at).toLocaleString()}
                       </div>
                     </div>
-                    {!isImageDoc(m) && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                        onClick={() => window.open(m.file_url, "_blank")}
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        View
-                      </Button>
-                    )}
-                  </div>
-                  {isImageDoc(m) && (
-                    <button
+                    <Button
                       type="button"
-                      className="overflow-hidden rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 dark:border-white/10"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
                       onClick={() => window.open(m.file_url, "_blank")}
                     >
-                      <img
-                        src={m.file_url}
-                        alt="Memorandum image"
-                        className="max-h-64 w-full object-contain"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    </button>
-                  )}
-                </div>
-              ))
+                      <Download className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
+                  </div>
+                )
+              )
             )}
           </CardContent>
         </Card>
-      </div>
-
-      <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Functional Flow
-          </CardTitle>
-          <CardDescription className="text-slate-700 dark:text-slate-300">
-            Approval and oversight path across key offices.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {portalDocs.functionalCharts.length === 0 ? (
-            <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
-              OSLD hasn't uploaded the functional flow yet.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {portalDocs.functionalCharts.map((f) => (
-                <div
-                  key={f.id}
-                  className="flex flex-col gap-3 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
-                >
-                  <div className="flex items-start justify-between gap-4">
+        <Card className="h-[420px] border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10 flex flex-col">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+              Functional Flow
+            </CardTitle>
+            <CardDescription className="text-slate-700 dark:text-slate-300">
+              Approval and oversight path across key offices.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-auto space-y-2 pr-1">
+            {portalDocs.functionalCharts.length === 0 ? (
+              <div className="rounded-xl border border-white/20 bg-white/40 p-4 text-sm text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300">
+                OSLD hasn't uploaded the functional flow yet.
+              </div>
+            ) : (
+              portalDocs.functionalCharts.map((f) =>
+                isImageDoc(f) ? (
+                  <button
+                    key={f.id}
+                    type="button"
+                    className="w-full overflow-hidden rounded-xl border border-white/20 bg-white/40 shadow-sm transition-colors hover:bg-white/50 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10"
+                    onClick={() => window.open(f.file_url, "_blank")}
+                  >
+                    <img
+                      src={f.file_url}
+                      alt="Functional chart image"
+                      className="h-56 w-full object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </button>
+                ) : (
+                  <div
+                    key={f.id}
+                    className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                  >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                        {isImageDoc(f) ? (
-                          <>
-                            <ImageIcon className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                            <span className="truncate">Image</span>
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                            <span className="truncate">{f.file_name}</span>
-                          </>
-                        )}
+                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                        <span className="truncate">{f.file_name}</span>
                       </div>
                       <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                         {new Date(f.uploaded_at).toLocaleString()}
                       </div>
                     </div>
-                    {!isImageDoc(f) && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                        onClick={() => window.open(f.file_url, "_blank")}
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        View
-                      </Button>
-                    )}
-                  </div>
-                  {isImageDoc(f) && (
-                    <button
+                    <Button
                       type="button"
-                      className="overflow-hidden rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 dark:border-white/10"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
                       onClick={() => window.open(f.file_url, "_blank")}
                     >
-                      <img
-                        src={f.file_url}
-                        alt="Functional chart image"
-                        className="max-h-80 w-full object-contain"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      <Download className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
+                  </div>
+                )
+              )
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="border-white/20 bg-white/50 backdrop-blur-xl shadow-xl dark:bg-slate-950/40 dark:border-white/10">
         <CardHeader className="pb-3">
