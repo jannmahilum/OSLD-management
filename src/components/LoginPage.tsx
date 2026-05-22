@@ -101,6 +101,16 @@ type OrgDocument = {
   uploaded_at: string;
 };
 
+const isImageDoc = (doc: OrgDocument) => {
+  const name = doc.file_name.toLowerCase();
+  const url = doc.file_url.toLowerCase();
+  return (
+    /\.(png|jpe?g|gif|webp|bmp|svg)$/.test(name) ||
+    /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/.test(url) ||
+    url.startsWith("data:image/")
+  );
+};
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -184,11 +194,13 @@ export default function LoginPage() {
     const shouldRemember = !!data.rememberMe;
 
     try {
+      const osldPassword = localStorage.getItem("osld_userPassword") || "OSLDsite";
+
       // Check for OSLD account
       if (
         data.organization === "osld" &&
         data.email === "OSLD@carsu.edu.ph" &&
-        data.password === "OSLDsite"
+        data.password === osldPassword
       ) {
         console.log("OSLD Login successful", data);
         localStorage.setItem("osld_userEmail", data.email);
@@ -375,31 +387,48 @@ export default function LoginPage() {
                 OSLD hasn't uploaded announcements yet.
               </div>
             ) : (
-              <div className="max-h-56 space-y-2 overflow-auto pr-1">
+              <div className="max-h-72 space-y-2 overflow-auto pr-1">
                 {portalDocs.announcements.map((a) => (
                   <div
                     key={a.id}
-                    className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                    className="flex flex-col gap-3 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                        <span className="truncate">{a.file_name}</span>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                          <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                          <span className="truncate">{a.file_name}</span>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                          {new Date(a.uploaded_at).toLocaleString()}
+                        </div>
                       </div>
-                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                        {new Date(a.uploaded_at).toLocaleString()}
-                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                        onClick={() => window.open(a.file_url, "_blank")}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        View
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                      onClick={() => window.open(a.file_url, "_blank")}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      View
-                    </Button>
+                    {isImageDoc(a) && (
+                      <button
+                        type="button"
+                        className="overflow-hidden rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 dark:border-white/10"
+                        onClick={() => window.open(a.file_url, "_blank")}
+                      >
+                        <img
+                          src={a.file_url}
+                          alt={a.file_name}
+                          className="max-h-56 w-full object-contain"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -425,27 +454,44 @@ export default function LoginPage() {
               portalDocs.memorandums.map((m) => (
                 <div
                   key={m.id}
-                  className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                  className="flex flex-col gap-3 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
                 >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                      <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                      <span className="truncate">{m.file_name}</span>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                        <span className="truncate">{m.file_name}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                        {new Date(m.uploaded_at).toLocaleString()}
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                      {new Date(m.uploaded_at).toLocaleString()}
-                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                      onClick={() => window.open(m.file_url, "_blank")}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                    onClick={() => window.open(m.file_url, "_blank")}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    View
-                  </Button>
+                  {isImageDoc(m) && (
+                    <button
+                      type="button"
+                      className="overflow-hidden rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 dark:border-white/10"
+                      onClick={() => window.open(m.file_url, "_blank")}
+                    >
+                      <img
+                        src={m.file_url}
+                        alt={m.file_name}
+                        className="max-h-64 w-full object-contain"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </button>
+                  )}
                 </div>
               ))
             )}
@@ -472,27 +518,44 @@ export default function LoginPage() {
               {portalDocs.functionalCharts.map((f) => (
                 <div
                   key={f.id}
-                  className="flex items-start justify-between gap-4 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
+                  className="flex flex-col gap-3 rounded-xl border border-white/20 bg-white/60 p-3 shadow-sm dark:bg-white/5 dark:border-white/10"
                 >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
-                      <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
-                      <span className="truncate">{f.file_name}</span>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+                        <FileText className="h-4 w-4 text-[#014421] dark:text-[#D4AF37]" />
+                        <span className="truncate">{f.file_name}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                        {new Date(f.uploaded_at).toLocaleString()}
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                      {new Date(f.uploaded_at).toLocaleString()}
-                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
+                      onClick={() => window.open(f.file_url, "_blank")}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 border-white/30 bg-white/40 hover:bg-white/50 dark:bg-white/5 dark:border-white/10"
-                    onClick={() => window.open(f.file_url, "_blank")}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    View
-                  </Button>
+                  {isImageDoc(f) && (
+                    <button
+                      type="button"
+                      className="overflow-hidden rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 dark:border-white/10"
+                      onClick={() => window.open(f.file_url, "_blank")}
+                    >
+                      <img
+                        src={f.file_url}
+                        alt={f.file_name}
+                        className="max-h-80 w-full object-contain"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
