@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import FileAnnotationViewer from "./FileAnnotationViewer";
-import { Menu, LogOut, FileText, Calendar, MapPin, Users, DollarSign, Target, Sparkles, Eye, X, Clock, Building2, CheckCircle, AlertTriangle, MoreHorizontal, Pen, Upload, Trash2, ArrowLeft } from "lucide-react";
+import { Menu, LogOut, FileText, Calendar, MapPin, Users, DollarSign, Target, Sparkles, Eye, ExternalLink, X, Clock, Building2, CheckCircle, AlertTriangle, MoreHorizontal, Pen, Upload, Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import {
@@ -1179,6 +1179,16 @@ export default function SubmissionsPage({
     });
   };
 
+  const isImageFile = (fileName: string, url: string) => {
+    const name = (fileName || "").toLowerCase();
+    const lowerUrl = (url || "").toLowerCase();
+    return (
+      /\.(png|jpe?g|gif|webp|bmp|svg)$/.test(name) ||
+      /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/.test(lowerUrl) ||
+      lowerUrl.startsWith("data:image/")
+    );
+  };
+
   const getStoragePathFromPublicUrl = (url: string) => {
     const marker = "/storage/v1/object/public/submissions/";
     const idx = url.indexOf(marker);
@@ -1508,6 +1518,7 @@ export default function SubmissionsPage({
                           </p>
                           {approvedFiles.map((file, idx) => {
                             const label = file.name.includes(':') ? file.name.split(':')[0].trim() : file.name;
+                            const isImage = isImageFile(file.name, file.url);
                             return (
                               <div key={idx} className="p-3 border-2 border-green-200 rounded-lg flex items-center justify-between gap-3 bg-green-50">
                                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -1516,22 +1527,34 @@ export default function SubmissionsPage({
                                   </div>
                                   <span className="text-sm text-green-800 truncate font-medium">{label}</span>
                                 </div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-green-500 text-green-700 hover:bg-green-100 shrink-0"
-                                  onClick={() => {
-                                    setIsDetailDialogOpen(false);
-                                    setPreviewFile({
-                                      ...file,
-                                      submissionId: selectedSubmission.id.toString(),
-                                      annotateMode: false,
-                                    });
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  View
-                                </Button>
+                                {isImage ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-green-500 text-green-700 hover:bg-green-100 shrink-0"
+                                    onClick={() => window.open(file.url, "_blank")}
+                                  >
+                                    <ExternalLink className="h-4 w-4 mr-1" />
+                                    Open
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-green-500 text-green-700 hover:bg-green-100 shrink-0"
+                                    onClick={() => {
+                                      setIsDetailDialogOpen(false);
+                                      setPreviewFile({
+                                        ...file,
+                                        submissionId: selectedSubmission.id.toString(),
+                                        annotateMode: false,
+                                      });
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    View
+                                  </Button>
+                                )}
                               </div>
                             );
                           })}
@@ -1551,6 +1574,7 @@ export default function SubmissionsPage({
                     {files.map((file, idx) => {
                       const label = file.name.includes(':') ? file.name.split(':')[0].trim() : file.name;
                       const hasAnnotations = annotatedFileUrls.has(file.url);
+                      const isImage = isImageFile(file.name, file.url);
                       return (
                         <div key={idx} className="p-3 border border-gray-200 rounded-lg flex items-center justify-between gap-3 bg-gray-50 overflow-hidden w-full">
                           <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
@@ -1567,7 +1591,7 @@ export default function SubmissionsPage({
                             </div>
                           </div>
                           <div className="flex gap-2 shrink-0">
-                            {isApprover && (
+                            {isApprover && !isImage && (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1585,21 +1609,33 @@ export default function SubmissionsPage({
                                 Annotate
                               </Button>
                             )}
-                            <Button
-                              size="sm"
-                              style={{ backgroundColor: "#003b27" }}
-                              onClick={() => {
-                                setIsDetailDialogOpen(false);
-                                setPreviewFile({
-                                  ...file,
-                                  submissionId: selectedSubmission.id.toString(),
-                                  annotateMode: false,
-                                });
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
+                            {isImage ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-[#003b27] text-[#003b27] hover:bg-[#003b27]/10"
+                                onClick={() => window.open(file.url, "_blank")}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-1" />
+                                Open
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                style={{ backgroundColor: "#003b27" }}
+                                onClick={() => {
+                                  setIsDetailDialogOpen(false);
+                                  setPreviewFile({
+                                    ...file,
+                                    submissionId: selectedSubmission.id.toString(),
+                                    annotateMode: false,
+                                  });
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                            )}
                           </div>
                         </div>
                       );

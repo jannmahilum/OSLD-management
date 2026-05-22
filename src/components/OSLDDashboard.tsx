@@ -382,6 +382,7 @@ export default function OSLDDashboard() {
   const [showNotificationPopover, setShowNotificationPopover] = useState(false);
   const [uploadedTemplates, setUploadedTemplates] = useState<Record<string, { forms?: { fileName: string; fileUrl: string }[] }>>({});
   const [isUploading, setIsUploading] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [templateLinks, setTemplateLinks] = useState<Record<string, { forms?: string }>>({});
   const [isInboxModalOpen, setIsInboxModalOpen] = useState(false);
   const [activeSubmissionTab, setActiveSubmissionTab] = useState<string>(() => localStorage.getItem(submissionTabStorageKey) || "Request to Conduct Activity");
@@ -2082,6 +2083,7 @@ ${deadlineInfo}`;
   };
 
   const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
     try {
       // Upload memorandum files
       for (const file of resolutionFiles) {
@@ -2167,6 +2169,8 @@ ${deadlineInfo}`;
     } catch (error: unknown) {
       console.error("Error saving profile:", error);
       showNotif("Failed to save profile");
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -5101,12 +5105,25 @@ ${deadlineInfo}`;
                   </Card>
                 </div>
 
+                {isSavingProfile && (
+                  <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                    <div className="rounded-xl bg-white/90 px-6 py-4 shadow-xl border border-white/20 flex items-center gap-3">
+                      <div className="animate-spin h-6 w-6 border-2 border-[#003b27] border-t-transparent rounded-full" />
+                      <span className="text-sm font-semibold text-gray-900">Saving profile...</span>
+                    </div>
+                  </div>
+                )}
+
                 <Button
                   onClick={handleSaveProfile}
+                  disabled={isSavingProfile}
                   className="w-full h-14 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
                   style={{ backgroundColor: "#003b27" }}
                 >
-                  Save Profile
+                  {isSavingProfile && (
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-3" />
+                  )}
+                  {isSavingProfile ? "Saving..." : "Save Profile"}
                 </Button>
               </div>
             </div>
