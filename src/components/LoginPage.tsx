@@ -150,9 +150,6 @@ function PortalDocSection({
         <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
           {title}
         </CardTitle>
-        <CardDescription className="text-slate-700 dark:text-slate-300">
-          {description}
-        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {docs.length === 0 ? (
