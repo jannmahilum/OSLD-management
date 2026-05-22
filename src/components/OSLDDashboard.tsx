@@ -2075,6 +2075,11 @@ ${deadlineInfo}`;
     }
   };
 
+  const isProfileUploadAllowed = (file: File) => {
+    const name = file.name.toLowerCase();
+    return file.type === "application/pdf" || file.type.startsWith("image/") || name.endsWith(".pdf");
+  };
+
   const handleSaveProfile = async () => {
     try {
       // Upload memorandum files
@@ -2570,7 +2575,6 @@ ${deadlineInfo}`;
 
   const handleLogout = () => {
     localStorage.removeItem("osld_userEmail");
-    localStorage.removeItem("osld_userPassword");
     localStorage.removeItem("userOrganization");
     localStorage.removeItem("app_lastPath");
     localStorage.removeItem("osld_activeNav");
@@ -4915,17 +4919,21 @@ ${deadlineInfo}`;
                     </h3>
                     <Input
                       type="file"
-                      accept=".pdf"
+                      accept="application/pdf,image/*"
                       multiple
                       onChange={(e) => {
                         const files = e.target.files;
                         if (files) {
-                          setResolutionFiles(prev => [...prev, ...Array.from(files)]);
+                          const picked = Array.from(files).filter(isProfileUploadAllowed);
+                          if (picked.length !== files.length) {
+                            showNotif("Only PDF and image files are allowed");
+                          }
+                          setResolutionFiles(prev => [...prev, ...picked]);
                         }
                       }}
                       className="cursor-pointer"
                     />
-                    <p className="text-xs text-gray-500 mt-1">You can upload multiple PDF files</p>
+                    <p className="text-xs text-gray-500 mt-1">You can upload multiple PDF or image files</p>
                     {resolutionFiles.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {resolutionFiles.map((file, index) => (
@@ -4948,7 +4956,7 @@ ${deadlineInfo}`;
                         {uploadedMemorandums.map((doc) => (
                           <div key={doc.id} className="flex items-center justify-between p-2 bg-blue-50 rounded">
                             <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-700 hover:underline">
-                              📄 {doc.file_name}
+                              📎 {doc.file_name}
                             </a>
                             <button
                               type="button"
@@ -4975,17 +4983,21 @@ ${deadlineInfo}`;
                     </h3>
                     <Input
                       type="file"
-                      accept=".pdf"
+                      accept="application/pdf,image/*"
                       multiple
                       onChange={(e) => {
                         const files = e.target.files;
                         if (files) {
-                          setActionPlanFiles(prev => [...prev, ...Array.from(files)]);
+                          const picked = Array.from(files).filter(isProfileUploadAllowed);
+                          if (picked.length !== files.length) {
+                            showNotif("Only PDF and image files are allowed");
+                          }
+                          setActionPlanFiles(prev => [...prev, ...picked]);
                         }
                       }}
                       className="cursor-pointer"
                     />
-                    <p className="text-xs text-gray-500 mt-1">You can upload multiple PDF files</p>
+                    <p className="text-xs text-gray-500 mt-1">You can upload multiple PDF or image files</p>
                     {actionPlanFiles.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {actionPlanFiles.map((file, index) => (
@@ -5008,7 +5020,7 @@ ${deadlineInfo}`;
                         {uploadedAnnouncements.map((doc) => (
                           <div key={doc.id} className="flex items-center justify-between p-2 bg-blue-50 rounded">
                             <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-700 hover:underline">
-                              📄 {doc.file_name}
+                              📎 {doc.file_name}
                             </a>
                             <button
                               type="button"
@@ -5035,17 +5047,21 @@ ${deadlineInfo}`;
                     </h3>
                     <Input
                       type="file"
-                      accept=".pdf"
+                      accept="application/pdf,image/*"
                       multiple
                       onChange={(e) => {
                         const files = e.target.files;
                         if (files) {
-                          setFunctionalChartFiles(prev => [...prev, ...Array.from(files)]);
+                          const picked = Array.from(files).filter(isProfileUploadAllowed);
+                          if (picked.length !== files.length) {
+                            showNotif("Only PDF and image files are allowed");
+                          }
+                          setFunctionalChartFiles(prev => [...prev, ...picked]);
                         }
                       }}
                       className="cursor-pointer"
                     />
-                    <p className="text-xs text-gray-500 mt-1">You can upload multiple PDF files</p>
+                    <p className="text-xs text-gray-500 mt-1">You can upload multiple PDF or image files</p>
                     {functionalChartFiles.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {functionalChartFiles.map((file, index) => (
@@ -5068,7 +5084,7 @@ ${deadlineInfo}`;
                         {uploadedFunctionalCharts.map((doc) => (
                           <div key={doc.id} className="flex items-center justify-between p-2 bg-blue-50 rounded">
                             <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-700 hover:underline">
-                              📄 {doc.file_name}
+                              📎 {doc.file_name}
                             </a>
                             <button
                               type="button"
@@ -5122,7 +5138,7 @@ ${deadlineInfo}`;
 
               <div className="space-y-2">
                 <Label htmlFor="newPassword" className="text-base font-medium">
-                  New Password
+                  Change Password
                 </Label>
                 <div className="relative">
                   <Input
@@ -5165,6 +5181,7 @@ ${deadlineInfo}`;
                     try {
                       // Update password in localStorage (OSLD uses hardcoded credentials)
                       localStorage.setItem("osld_userPassword", newPassword);
+                      localStorage.setItem("osld_admin_password", newPassword);
                       setCurrentPassword(newPassword);
                       
                       toast({
@@ -5745,187 +5762,6 @@ ${deadlineInfo}`;
                   )}
                 </PopoverContent>
               </Popover>
-              
-              {/* Inbox Popover */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full w-10 h-10"
-                    style={{ borderColor: "#d4af37", color: "#003b27" }}
-                  >
-                    <Inbox className="h-5 w-5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-96 p-4" align="end">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div 
-                      className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm"
-                      style={{ backgroundColor: '#d4af37' }}
-                    >
-                      <Inbox className="w-5 h-5" style={{ color: '#003b27' }} />
-                    </div>
-                    <div>
-                      <h3
-                        className="text-lg font-bold"
-                        style={{ color: "#003b27" }}
-                      >
-                        INBOX
-                      </h3>
-                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                        {selectedDate && selectedDate.toDateString() === new Date().toDateString() ? "Today" : "Selected Date"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-sm font-semibold text-gray-700">
-                      {selectedDate
-                        ? formatSelectedDate(selectedDate)
-                        : "Select a date"}
-                    </span>
-                  </div>
-                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
-                    {selectedDate && getEventsForDate(selectedDate).length > 0 ? (
-                      getEventsForDate(selectedDate).map((event) => {
-                        const dayNumber = getEventDayNumber(event, selectedDate);
-                        const eventColor = getEventColor(event.id);
-                        const isToday = 
-                          selectedDate.getDate() === new Date().getDate() &&
-                          selectedDate.getMonth() === new Date().getMonth() &&
-                          selectedDate.getFullYear() === new Date().getFullYear();
-                        
-                        // Professional deadline card styling
-                        if (event.isDeadline) {
-                          return (
-                            <div
-                              key={event.id}
-                              className="rounded-xl overflow-hidden shadow-md border border-red-200 bg-white"
-                            >
-                              <div className="px-4 py-3 bg-gradient-to-r from-red-600 to-rose-600 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  <span className="text-white font-bold text-sm uppercase tracking-wider">
-                                    {event.deadlineType === 'accomplishment' ? 'Accomplishment Report Due' : 'Liquidation Report Due'}
-                                  </span>
-                                </div>
-                                <span className="text-xs text-red-100 font-medium">
-                                  Due Today
-                                </span>
-                              </div>
-                              <div className="p-4">
-                                <h4 className="font-bold text-gray-800 mb-1">
-                                  {event.title}
-                                </h4>
-                                <OSLDDeadlineNotification 
-                                  deadlineType={event.deadlineType}
-                                  eventId={event.parentEventId}
-                                  targetOrg={event.targetOrganization}
-                                  setActiveNav={setActiveNav}
-                                  setActiveSubmissionTab={setActiveSubmissionTab}
-                                />
-                              </div>
-                            </div>
-                          );
-                        }
-                        
-                        // Regular event card styling
-                        return (
-                          <div
-                            key={event.id}
-                            className="rounded-xl overflow-hidden shadow-md border bg-white hover:shadow-lg transition-all"
-                            style={{ borderColor: isToday ? '#d4af37' : '#e5e7eb' }}
-                          >
-                            <div 
-                              className="px-4 py-3 flex items-center justify-between"
-                              style={{ 
-                                backgroundColor: isToday ? 'rgba(212, 175, 55, 0.15)' : 'rgba(0, 59, 39, 0.05)',
-                                borderBottom: `3px solid ${eventColor}`
-                              }}
-                            >
-                              <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: eventColor }}
-                                />
-                                <span className="font-bold text-sm" style={{ color: '#003b27' }}>
-                                  {isToday ? 'Today' : 'Event'}
-                                </span>
-                              </div>
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 rounded-full hover:bg-white/50"
-                                  onClick={() => openEditEventModal(event)}
-                                >
-                                  <Edit2 className="h-3.5 w-3.5" style={{ color: "#003b27" }} />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 rounded-full hover:bg-red-50"
-                                  onClick={() => confirmDeleteEvent(event.id)}
-                                >
-                                  <X className="h-3.5 w-3.5 text-red-500" />
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="p-4">
-                              <h4 className="font-bold text-gray-800 text-base mb-2">
-                                {event.title}
-                              </h4>
-                              <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <span>
-                                  {event.startDate === event.endDate ? event.startDate : `${event.startDate} — ${event.endDate}`}
-                                </span>
-                              </div>
-                              {!event.allDay && event.startTime && event.endTime && (
-                                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  <span>{event.startTime} — {event.endTime}</span>
-                                </div>
-                              )}
-                              {event.venue && (
-                                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                                  <MapPin className="w-3.5 h-3.5" />
-                                  <span>{event.venue}</span>
-                                </div>
-                              )}
-                              {event.description && (
-                                <div className="mt-3 pt-3 border-t border-gray-100">
-                                  <p className="text-sm text-gray-600 leading-relaxed break-words whitespace-pre-wrap">
-                                    {event.description}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
-                        <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <p className="text-gray-400 font-medium">No events</p>
-                        <p className="text-gray-300 text-sm mt-1">Select a date with events</p>
-                      </div>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              
               <Button
                 onClick={() => setShowProfile(true)}
                 variant="ghost"

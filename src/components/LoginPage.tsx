@@ -184,11 +184,13 @@ export default function LoginPage() {
     const shouldRemember = !!data.rememberMe;
 
     try {
+      const osldPassword = localStorage.getItem("osld_userPassword") || "OSLDsite";
+
       // Check for OSLD account
       if (
         data.organization === "osld" &&
         data.email === "OSLD@carsu.edu.ph" &&
-        data.password === "OSLDsite"
+        data.password === osldPassword
       ) {
         console.log("OSLD Login successful", data);
         localStorage.setItem("osld_userEmail", data.email);
