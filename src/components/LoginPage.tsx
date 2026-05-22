@@ -509,7 +509,7 @@ export default function LoginPage() {
   );
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 p-6 text-slate-900 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 dark:text-slate-50">
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 p-6 text-slate-900 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 dark:text-slate-50 lg:h-screen lg:overflow-hidden">
       <motion.div
         aria-hidden
         className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-[#014421]/15 blur-3xl dark:bg-[#014421]/25"
@@ -523,8 +523,8 @@ export default function LoginPage() {
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      <div className="relative mx-auto w-full max-w-6xl">
-        <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="relative mx-auto w-full max-w-6xl lg:h-full lg:flex lg:flex-col lg:min-h-0">
+        <div className="mb-6 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#014421] shadow-sm">
               <Lock className="h-5 w-5 text-white" />
@@ -580,7 +580,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid gap-8 lg:grid-cols-2 lg:flex-1 lg:min-h-0">
           <div className="lg:order-2 lg:sticky lg:top-8 lg:self-start">
             <Card className="border-white/20 bg-white/55 backdrop-blur-xl shadow-2xl dark:bg-slate-950/40 dark:border-white/10">
               <div className="h-1.5 w-full rounded-t-xl bg-gradient-to-r from-[#014421] via-[#D4AF37] to-[#014421]" />
@@ -732,13 +732,17 @@ export default function LoginPage() {
             </Card>
           </div>
 
-          <div className="hidden lg:order-1 lg:block">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                Information Portal
+          <div className="hidden lg:order-1 lg:block lg:min-h-0">
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="mb-4 flex items-center justify-between shrink-0">
+                <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Information Portal
+                </div>
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto pr-4">
+                {Portal}
               </div>
             </div>
-            {Portal}
           </div>
         </div>
       </div>
