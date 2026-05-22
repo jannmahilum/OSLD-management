@@ -574,7 +574,7 @@ export default function LoginPage() {
                     Announcements, memos, and functional flow.
                   </DrawerDescription>
                 </DrawerHeader>
-                <div className="px-4 pb-6 overflow-auto">{Portal}</div>
+                <div className="px-4 pb-6 overflow-auto scrollbar-none">{Portal}</div>
               </DrawerContent>
             </Drawer>
           </div>
@@ -739,7 +739,7 @@ export default function LoginPage() {
                   Information Portal
                 </div>
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto pr-4">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-4 scrollbar-none">
                 {Portal}
               </div>
             </div>
